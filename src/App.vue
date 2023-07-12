@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ref } from "vue"
 import 天道 from "../txt/天道.txt?raw"
-const refs = ref()
 let txt: string
 txt =
   "11111111111111111111111111111111111111111111111111111111111111111111调用111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111调用111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
-txt = 天道.slice(30, 1000)
+txt = 天道.slice(0, 1e4)
 let allWordXYMap: {
   width: number
   height: number
@@ -16,7 +14,13 @@ let allWordXYMap: {
   word: string
 }[]
 
+const selection = getSelection()
+const selectedTerms = new Set<string>()
+let dom: Node
+
 setTimeout(() => {
+  dom = document.querySelector("article")!.childNodes[0]
+
   allWordXYMap = [...txt]
     .map((word, pos) => [word, createRange(pos, word)] as const)
     .map(([word, range]) => {
@@ -28,26 +32,32 @@ setTimeout(() => {
         width,
         height: 26,
         word,
+        range,
       }
     })
 
-  const r = allWordXYMap.reduce((acc, cur) => {
-    if (!acc[cur.width]) acc[cur.width] = new Set()
-    acc[cur.width].add(cur.word)
-    return acc
-  }, {} as any)
+  console.log(allWordXYMap)
 
-  console.log(r)
+  newSearch("小丹", true)
+  newSearch("丁元英", true)
 
-  newSearch("小丹")
+  // const r = allWordXYMap.reduce((acc, cur) => {
+  //   if (!acc[cur.width]) acc[cur.width] = new Set()
+  //   acc[cur.width].add(cur.word)
+  //   return acc
+  // }, {} as any)
 
-  document.onselectionchange = () => {
-    newSearch(getSelection() + "")
-  }
-
+  // document.onmousemove = () => {
+  //   newSearch(selection + "")
+  // }
   document.onclick = (e) => {
+    if (selection + "") {
+      newSearch(selection + "", true)
+      selection?.empty()
+      return
+    }
+
     const { y, nextY } = findClickedWord(e)
-    console.log(e.y + document.documentElement.scrollTop, y, nextY)
 
     nextY &&
       scrollBy({
@@ -57,10 +67,11 @@ setTimeout(() => {
   }
 })
 
-function newSearch(query: string) {
+function newSearch(query: string, isFiexd?: boolean) {
   if (query === "") return
 
   const postions = searchTxt(txt, query)
+  const ranges = postions.map((pos) => createRange(pos, query))
 
   postions.forEach((pos, i) => {
     const p = allWordXYMap[getPreItem(postions, i)].y
@@ -72,19 +83,32 @@ function newSearch(query: string) {
   })
 
   const css = (CSS as any).highlights
-  css.delete("tmp")
-  css.set(
-    "tmp",
-    new (window as any).Highlight(
-      ...postions.map((pos) => createRange(pos, query))
-    )
-  )
-  // if (tmp) css.delete(tmp)
-  // tmp = query
+  if (isFiexd) {
+    if (selectedTerms.has(query)) {
+      selectedTerms.delete(query)
+      css.set(
+        "fixed",
+        _Highlight(
+          [...css.get("fixed")].filter(
+            (e: Range) => !postions.includes(e.startOffset)
+          )
+        )
+      )
+      return
+    } else {
+      selectedTerms.add(query)
+      css.set("fixed", _Highlight(ranges, css.get("fixed")))
+    }
+  } else {
+    css.set("tmp", _Highlight(ranges))
+  }
+}
+
+function _Highlight(x: any[] = [], y: any[] = []) {
+  return new (window as any).Highlight(...x, ...y)
 }
 
 function createRange(start: number, word: string) {
-  const dom = document.querySelector("article")!.childNodes[0]
   const range = new Range()
   range.setStart(dom, start)
   range.setEnd(dom, start + word.length)
@@ -121,10 +145,7 @@ function getNextItem(arr: number[], i: number) {
 </script>
 
 <template>
-  <article
-    ref="refs"
-    style="font-size: 20px; font-family: Consolas; width: 22em"
-  >
+  <article>
     {{ txt }}
   </article>
 </template>
@@ -132,15 +153,22 @@ function getNextItem(arr: number[], i: number) {
 <style scoped>
 article {
   color: #332a1f;
-  white-space: normal;
+  white-space: break-spaces;
   word-spacing: unset;
   word-wrap: break-word;
   word-break: break-all;
   /* text-align: justify; */
-  line-height: 3em;
+  /* line-height: 1em; */
+  font-size: 20px;
+  /* font-family: Consolas; */
+  /* width: 22em; */
 }
 
 ::highlight(tmp) {
+  background-color: #333;
+  color: white;
+}
+::highlight(fixed) {
   background-color: #333;
   color: white;
 }
