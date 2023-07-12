@@ -1,45 +1,28 @@
 <script setup lang="ts">
-import 天道 from "../txt/天道.txt?raw"
-let txt: string
-txt =
-  "11111111111111111111111111111111111111111111111111111111111111111111调用111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111调用111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
-txt = 天道.slice(0, 1e4)
-let allWordXYMap: {
-  width: number
-  height: number
+import txt from "../txt/天道.txt?raw"
+
+type MyRange = Range & {
   x: number
   y: number
-  preY?: number
-  nextY?: number
-  word: string
-}[]
+  width: number
+  height: number
 
-const selection = getSelection()
-const selectedTerms = new Set<string>()
+  nextY: number
+  word: string
+}
+
 let dom: Node
+let allRanges: MyRange[] = []
+const selection = getSelection()
+const selectedAllTerms = new Set<string>()
+let selectedHoverTerm: string
 
 setTimeout(() => {
   dom = document.querySelector("article")!.childNodes[0]
 
-  allWordXYMap = [...txt]
-    .map((word, pos) => [word, createRange(pos, word)] as const)
-    .map(([word, range]) => {
-      const { x, y, width } = range.getBoundingClientRect()
-
-      return {
-        x,
-        y: y + document.documentElement.scrollTop,
-        width,
-        height: 26,
-        word,
-        range,
-      }
-    })
-
-  console.log(allWordXYMap)
-
-  newSearch("小丹", true)
-  newSearch("丁元英", true)
+  newSearch("小丹")
+  newSearch("遥远")
+  console.log(allRanges)
 
   // const r = allWordXYMap.reduce((acc, cur) => {
   //   if (!acc[cur.width]) acc[cur.width] = new Set()
@@ -47,82 +30,83 @@ setTimeout(() => {
   //   return acc
   // }, {} as any)
 
-  // document.onmousemove = () => {
-  //   newSearch(selection + "")
-  // }
+  document.onmousemove = (e) => {
+    console.log(XY2Range(e))
+  }
   document.onclick = (e) => {
     if (selection + "") {
-      newSearch(selection + "", true)
+      newSearch(selection + "")
       selection?.empty()
       return
     }
 
-    const { y, nextY } = findClickedWord(e)
+    const r = XY2Range(e)
 
-    nextY &&
+    r &&
       scrollBy({
-        top: nextY - y,
+        top: r.nextY - r.y,
         behavior: "smooth",
       })
   }
 })
 
-function newSearch(query: string, isFiexd?: boolean) {
+function newSearch(query: string) {
   if (query === "") return
 
   const postions = searchTxt(txt, query)
   const ranges = postions.map((pos) => createRange(pos, query))
 
-  postions.forEach((pos, i) => {
-    const p = allWordXYMap[getPreItem(postions, i)].y
-    const n = allWordXYMap[getNextItem(postions, i)].y
-    allWordXYMap.slice(pos, pos + query.length).forEach((target) => {
-      target.preY = p
-      target.nextY = n
-    })
+  ranges.forEach((range, idx, ranges) => {
+    let { x, y, width, height } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom
+    y += document.documentElement.scrollTop
+
+    range.x = x
+    range.y = y
+    range.width = width
+    range.height = height
+    range.word = query
+    //
+    ;(ranges[idx - 1] || ranges[ranges.length - 1]).nextY = y
   })
 
   const css = (CSS as any).highlights
-  if (isFiexd) {
-    if (selectedTerms.has(query)) {
-      selectedTerms.delete(query)
-      css.set(
-        "fixed",
-        _Highlight(
-          [...css.get("fixed")].filter(
-            (e: Range) => !postions.includes(e.startOffset)
-          )
-        )
-      )
-      return
+
+  const h = (() => {
+    const f = css.get("fixed")
+
+    if (!selectedAllTerms.has(query)) {
+      selectedAllTerms.add(query)
+      return [...ranges, ...(f || [])]
     } else {
-      selectedTerms.add(query)
-      css.set("fixed", _Highlight(ranges, css.get("fixed")))
+      selectedAllTerms.delete(query)
+      return [...f].filter((e: Range) => !postions.includes(e.startOffset))
     }
-  } else {
-    css.set("tmp", _Highlight(ranges))
-  }
+  })()
+
+  css.set("fixed", HighlightWrap(h))
 }
 
-function _Highlight(x: any[] = [], y: any[] = []) {
-  return new (window as any).Highlight(...x, ...y)
+function HighlightWrap(h: any[] = []) {
+  allRanges = h
+  return new (window as any).Highlight(...h)
 }
 
 function createRange(start: number, word: string) {
-  const range = new Range()
+  const range = new Range() as MyRange
   range.setStart(dom, start)
   range.setEnd(dom, start + word.length)
   return range
 }
 
-function findClickedWord({ x, y }: { x: number; y: number }) {
+function XY2Range({ x, y }: { x: number; y: number }) {
   y += document.documentElement.scrollTop
-  const word = allWordXYMap.find((w) => {
-    const xMatch = w.x <= x && x <= w.x + w.width
-    const yMatch = w.y <= y && y <= w.y + w.height
+  const word = allRanges.find((range) => {
+    const xMatch = range.x <= x && x <= range.x + range.width
+    const yMatch = range.y <= y && y <= range.y + range.height
     return xMatch && yMatch
   })
-  return word || ({} as (typeof allWordXYMap)[0])
+
+  return word
 }
 
 function searchTxt(txt: string, search: string) {
@@ -152,7 +136,7 @@ function getNextItem(arr: number[], i: number) {
 
 <style scoped>
 article {
-  color: #332a1f;
+  color: #fff;
   white-space: break-spaces;
   word-spacing: unset;
   word-wrap: break-word;
@@ -164,13 +148,8 @@ article {
   /* width: 22em; */
 }
 
-::highlight(tmp) {
-  background-color: #333;
-  color: white;
-}
 ::highlight(fixed) {
-  background-color: #333;
-  color: white;
+  color: #eee;
 }
 /* 开启平滑滚动 */
 * {
