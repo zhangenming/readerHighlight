@@ -16,6 +16,7 @@ let allRanges: MyRange[] = []
 const selection = getSelection()
 const selectedAllTerms = new Set<string>()
 let selectedHoverTerm: string
+const allRangesObj: { [s: string]: MyRange[] } = {}
 
 setTimeout(() => {
   dom = document.querySelector("article")!.childNodes[0]
@@ -31,7 +32,12 @@ setTimeout(() => {
   // }, {} as any)
 
   document.onmousemove = (e) => {
-    console.log(XY2Range(e))
+    const r = XY2Range(e)
+    if (!r) return
+
+    const h = allRangesObj[r.word]
+
+    ;(CSS as any).highlights.set("hover", HighlightWrap(h))
   }
   document.onclick = (e) => {
     if (selection + "") {
@@ -55,6 +61,7 @@ function newSearch(query: string) {
 
   const postions = searchTxt(txt, query)
   const ranges = postions.map((pos) => createRange(pos, query))
+  allRangesObj[query] = ranges
 
   ranges.forEach((range, idx, ranges) => {
     let { x, y, width, height } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom
@@ -82,12 +89,12 @@ function newSearch(query: string) {
       return [...f].filter((e: Range) => !postions.includes(e.startOffset))
     }
   })()
+  allRanges = h
 
   css.set("fixed", HighlightWrap(h))
 }
 
 function HighlightWrap(h: any[] = []) {
-  allRanges = h
   return new (window as any).Highlight(...h)
 }
 
@@ -150,6 +157,9 @@ article {
 
 ::highlight(fixed) {
   color: #eee;
+}
+::highlight(hover) {
+  color: #111;
 }
 /* 开启平滑滚动 */
 * {
