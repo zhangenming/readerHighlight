@@ -11,25 +11,19 @@ type MyRange = Range & {
   word: string
 }
 
+const selection = getSelection()
+const highlights = (CSS as any).highlights
+
 let dom: Node
 let allRanges: MyRange[] = []
-const selection = getSelection()
-const selectedAllTerms = new Set<string>()
-let selectedHoverTerm: string
 const allRangesObj: { [s: string]: MyRange[] } = {}
+const selectedAllTerms = new Set<string>()
 
 setTimeout(() => {
   dom = document.querySelector("article")!.childNodes[0]
 
   newSearch("小丹")
   newSearch("遥远")
-  console.log(allRanges)
-
-  // const r = allWordXYMap.reduce((acc, cur) => {
-  //   if (!acc[cur.width]) acc[cur.width] = new Set()
-  //   acc[cur.width].add(cur.word)
-  //   return acc
-  // }, {} as any)
 
   document.onmousemove = (e) => {
     const r = XY2Range(e)
@@ -37,7 +31,7 @@ setTimeout(() => {
 
     const h = allRangesObj[r.word]
 
-    ;(CSS as any).highlights.set("hover", HighlightWrap(h))
+    highlights.set("hover", HighlightWrap(h))
   }
   document.onclick = (e) => {
     if (selection + "") {
@@ -47,17 +41,17 @@ setTimeout(() => {
     }
 
     const r = XY2Range(e)
+    if (!r) return
 
-    r &&
-      scrollBy({
-        top: r.nextY - r.y,
-        behavior: "smooth",
-      })
+    scrollBy({
+      top: r.nextY - r.y,
+      behavior: "smooth",
+    })
   }
 })
 
 function newSearch(query: string) {
-  if (query === "") return
+  if (query === "" || query.includes("\n")) return
 
   const postions = searchTxt(txt, query)
   const ranges = postions.map((pos) => createRange(pos, query))
@@ -76,10 +70,8 @@ function newSearch(query: string) {
     ;(ranges[idx - 1] || ranges[ranges.length - 1]).nextY = y
   })
 
-  const css = (CSS as any).highlights
-
-  const h = (() => {
-    const f = css.get("fixed")
+  allRanges = (() => {
+    const f = highlights.get("fixed")
 
     if (!selectedAllTerms.has(query)) {
       selectedAllTerms.add(query)
@@ -89,9 +81,19 @@ function newSearch(query: string) {
       return [...f].filter((e: Range) => !postions.includes(e.startOffset))
     }
   })()
-  allRanges = h
 
-  css.set("fixed", HighlightWrap(h))
+  highlights.set("fixed", HighlightWrap(allRanges))
+}
+
+function XY2Range({ x, y }: { x: number; y: number }) {
+  y += document.documentElement.scrollTop
+  const word = allRanges.find((range) => {
+    const xMatch = range.x <= x && x <= range.x + range.width
+    const yMatch = range.y <= y && y <= range.y + range.height
+    return xMatch && yMatch
+  })
+
+  return word // || ({} as MyRange)
 }
 
 function HighlightWrap(h: any[] = []) {
@@ -105,17 +107,6 @@ function createRange(start: number, word: string) {
   return range
 }
 
-function XY2Range({ x, y }: { x: number; y: number }) {
-  y += document.documentElement.scrollTop
-  const word = allRanges.find((range) => {
-    const xMatch = range.x <= x && x <= range.x + range.width
-    const yMatch = range.y <= y && y <= range.y + range.height
-    return xMatch && yMatch
-  })
-
-  return word
-}
-
 function searchTxt(txt: string, search: string) {
   const targets = []
   let index = txt.indexOf(search)
@@ -124,14 +115,6 @@ function searchTxt(txt: string, search: string) {
     index = txt.indexOf(search, index + 1)
   }
   return targets
-}
-
-function getPreItem(arr: number[], i: number) {
-  return arr[i - 1] || arr[arr.length - 1]
-}
-
-function getNextItem(arr: number[], i: number) {
-  return arr[i + 1] || arr[0]
 }
 </script>
 
