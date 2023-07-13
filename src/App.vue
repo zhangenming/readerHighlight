@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, watchEffect } from "vue"
+import { ref, computed, watchEffect } from "vue"
 import txt from "../txt/天道.txt?raw"
-import { computed } from "vue"
 
 type MyRange = Range & {
   x: number
@@ -9,14 +8,16 @@ type MyRange = Range & {
   width: number
   height: number
 
-  firstY: number
-  lastY: number
-  nextY: number
-  preY: number
+  // firstY: number
+  // lastY: number
+  // nextY: number
+  // preY: number
+
   firstR: MyRange
   lastR: MyRange
   nextR: MyRange
   preR: MyRange
+
   query: string
 }
 
@@ -27,7 +28,6 @@ const scrollTop = ref(0)
 
 const hoverSelection = ref("")
 const clickSelection = ref("")
-const clickRange = ref<MyRange>()
 
 const allRangesObj = ref<{ [s: string]: MyRange[] }>({})
 
@@ -37,12 +37,11 @@ const allRangesObjFlat = computed(() =>
 const allRangesObjFlatOnScreen = computed(() => {
   const s = scrollTop.value
   const x = s + window.innerHeight
-  const f = allRangesObjFlat.value.filter(({ y }) => y > s && y < x)
-  return f
+  return allRangesObjFlat.value.filter(({ y }) => y > s && y < x)
 })
 
 watchEffect(() => {
-  HighlightWrap("fixed", allRangesObjFlatOnScreen.value, 1)
+  HighlightWrap("all", allRangesObjFlatOnScreen.value, 1)
 })
 
 watchEffect(() => {
@@ -65,8 +64,14 @@ watchEffect(() => {
   )
 })
 
+const clickRange = ref<MyRange>()
 watchEffect(() => {
   clickRange.value && HighlightWrap("clickRange", [clickRange.value.nextR], 9)
+})
+
+const justOne = ref<MyRange>()
+watchEffect(() => {
+  justOne.value && HighlightWrap("justOne", [justOne.value], 19)
 })
 
 const selectedAllTerms = ref(new Set<string>())
@@ -74,10 +79,24 @@ const selectedAllTerms = ref(new Set<string>())
 setTimeout(() => {
   dom = document.querySelector("article")!.childNodes[0]
 
+  newSearch("(第一部分)")
   newSearch("丁元英")
   newSearch("小丹")
   newSearch("遥远")
-  newSearch("的")
+
+  document.onclick = (e) => {
+    const s = selection + ""
+    selection?.empty()
+
+    if (s) {
+      return selectedAllTerms.value.has(s) ? deleteItem(s) : newSearch(s)
+    }
+
+    const r = XY2Range(e)
+    if (!r) return
+
+    goR(r, e.ctrlKey, e.shiftKey)
+  }
 
   document.onscroll = () => {
     scrollTop.value = document.documentElement.scrollTop
@@ -88,20 +107,6 @@ setTimeout(() => {
     if (!r) return
 
     hoverSelection.value = r.query
-  }
-
-  document.onclick = ({ x, y, ctrlKey, shiftKey }) => {
-    const s = selection + ""
-    selection?.empty()
-
-    if (s) {
-      return selectedAllTerms.value.has(s) ? deleteItem(s) : newSearch(s)
-    }
-
-    const r = XY2Range({ x, y })
-    if (!r) return
-
-    goR(r, ctrlKey, shiftKey)
   }
 
   document.onkeydown = (e) => {
@@ -116,6 +121,44 @@ setTimeout(() => {
   }
 })
 
+function newSearch(query: string) {
+  if (query === "" || query.includes("\n")) return
+
+  selectedAllTerms.value.add(query)
+
+  const ranges = searchTxt(txt, query)
+    .map((pos) => createRange(pos, query))
+    .map((range, idx, ranges) => {
+      const firstR = ranges[0]
+      const lastR = ranges[ranges.length - 1]
+
+      const { x, y, width, height } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom, 这个信息是为了click的时候XY2Range用, 现在暂时用不到
+
+      return Object.assign(range, {
+        query,
+
+        firstR,
+        lastR,
+        preR: ranges[idx - 1] || lastR,
+        nextR: ranges[idx + 1] || firstR,
+
+        x,
+        y: y + document.documentElement.scrollTop, // 相对0的绝对距离
+        width,
+        height,
+      })
+    })
+
+  if (ranges.length === 1) {
+    justOne.value = ranges[0]
+    // setTimeout(() => {
+    //   justOne.value = undefined
+    // }, 3000)
+  } else {
+    allRangesObj.value[query] = ranges
+  }
+}
+
 function goR(r: MyRange, ctrlKey: boolean, shiftKey: boolean) {
   clickSelection.value = r.query
   clickRange.value = r
@@ -124,8 +167,9 @@ function goR(r: MyRange, ctrlKey: boolean, shiftKey: boolean) {
     behavior: "smooth",
     top:
       (ctrlKey
-        ? r[shiftKey ? "firstY" : "lastY"]
-        : r[shiftKey ? "preY" : "nextY"]) - r.y,
+        ? r[shiftKey ? "firstR" : "lastR"]
+        : r[shiftKey ? "preR" : "nextR"]
+      ).y - r.y,
   })
 }
 
@@ -134,64 +178,19 @@ function deleteItem(query: string) {
 
   delete allRangesObj.value[query]
 }
-function newSearch(query: string) {
-  if (query === "" || query.includes("\n")) return
 
-  selectedAllTerms.value.add(query)
-
-  const ranges = searchTxt(txt, query).map((pos) => {
-    const range = createRange(pos, query)
-
-    let { x, y, width, height } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom, 这个信息是为了click的时候XY2Range用, 现在暂时用不到
-    y += document.documentElement.scrollTop
-
-    Object.assign(range, {
-      x,
-      y,
-      width,
-      height,
-      query,
-    })
-
-    return range
-  })
-
-  ranges.forEach((range, idx, ranges) => {
-    const firstR = ranges[0]
-    const lastR = ranges[ranges.length - 1]
-    const preR = ranges[idx - 1] || lastR
-    const nextR = ranges[idx + 1] || firstR
-
-    range.firstY = firstR.y
-    range.lastY = lastR.y
-    range.preY = preR.y
-    range.nextY = nextR.y
-
-    range.preR = preR
-    range.nextR = nextR
-  })
-
-  allRangesObj.value[query] = ranges
-}
-function XY2Range({ x, y }: { x: number; y: number }) {
-  y += document.documentElement.scrollTop
-  return allRangesObjFlat.value.find((range) => {
-    const xMatch = range.x <= x && x <= range.x + range.width
-    const yMatch = range.y <= y && y <= range.y + range.height
+function XY2Range({ pageX, pageY }: { pageX: number; pageY: number }) {
+  return allRangesObjFlat.value.find(({ x, y, width, height }) => {
+    const xMatch = x <= pageX && pageX <= x + width
+    const yMatch = y <= pageY && pageY <= y + height
     return xMatch && yMatch
   })
 }
 
-function HighlightWrap(key: string, h?: MyRange[], priority?: number) {
-  const highlights = (CSS as any).highlights
-
-  if (h) {
-    const H = new (window as any).Highlight(...h)
-    H.priority = priority
-    highlights.set(key, H)
-  } else {
-    return highlights.get(key)
-  }
+function HighlightWrap(key: string, h: MyRange[], priority?: number) {
+  const H = new (window as any).Highlight(...h)
+  H.priority = priority
+  ;(CSS as any).highlights.set(key, H)
 }
 
 function createRange(start: number, query: string) {
@@ -221,7 +220,7 @@ function searchTxt(txt: string, search: string) {
 <style scoped>
 article {
   scroll-behavior: smooth;
-  color: #aaa;
+  color: #fff;
   white-space: break-spaces;
   word-spacing: unset;
   word-wrap: break-word;
@@ -233,8 +232,8 @@ article {
   /* width: 22em; */
 }
 
-article::highlight(fixed) {
-  color: #000;
+article::highlight(all) {
+  color: #666;
 }
 article::highlight(hover) {
   color: aliceblue;
@@ -246,5 +245,12 @@ article::highlight(click) {
 article::highlight(clickRange) {
   background: #000;
   color: #fff;
+}
+article::highlight(justOne) {
+  color: #666;
+  text-decoration-line: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-style: wavy;
+  text-decoration-color: red;
 }
 </style>
