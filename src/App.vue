@@ -41,16 +41,18 @@ const allRangesObjFlatOnScreen = computed(() => {
   return f
 })
 
-const allRangesObjFlatOnScreenHover = computed(() =>
-  allRangesObjFlatOnScreen.value.filter((e) => e.query === hoverSelection.value)
-)
-
-watch(allRangesObjFlatOnScreen, (allRangesObjFlatOnScreen) => {
-  HighlightWrap("fixed", allRangesObjFlatOnScreen)
+watchEffect(() => {
+  HighlightWrap("fixed", allRangesObjFlatOnScreen.value, 1)
 })
 
-watch(allRangesObjFlatOnScreenHover, (allRangesObjFlatOnScreenHover) => {
-  HighlightWrap("hover", allRangesObjFlatOnScreenHover)
+watchEffect(() => {
+  HighlightWrap(
+    "hover",
+    allRangesObjFlatOnScreen.value.filter(
+      (e) => e.query === hoverSelection.value
+    ),
+    4
+  )
 })
 
 watchEffect(() => {
@@ -58,8 +60,13 @@ watchEffect(() => {
     "click",
     allRangesObjFlatOnScreen.value.filter(
       (e) => e.query === clickSelection.value
-    )
+    ),
+    3
   )
+})
+
+watchEffect(() => {
+  clickRange.value && HighlightWrap("clickRange", [clickRange.value.nextR], 9)
 })
 
 const selectedAllTerms = ref(new Set<string>())
@@ -98,7 +105,7 @@ setTimeout(() => {
   }
 
   document.onkeydown = (e) => {
-    if (e.code === "Space") {
+    if (e.altKey) {
       e.preventDefault()
       goR(
         e.shiftKey ? clickRange.value?.preR! : clickRange.value?.nextR!,
@@ -175,11 +182,13 @@ function XY2Range({ x, y }: { x: number; y: number }) {
   })
 }
 
-function HighlightWrap(key: string, h?: MyRange[]) {
+function HighlightWrap(key: string, h?: MyRange[], priority?: number) {
   const highlights = (CSS as any).highlights
 
   if (h) {
-    highlights.set(key, new (window as any).Highlight(...h))
+    const H = new (window as any).Highlight(...h)
+    H.priority = priority
+    highlights.set(key, H)
   } else {
     return highlights.get(key)
   }
@@ -204,21 +213,14 @@ function searchTxt(txt: string, search: string) {
 </script>
 
 <template>
-  <article id="reader">
+  <article>
     {{ txt }}
   </article>
-
-  <component is="style">
-    article__::highlight({{ hoverSelection }}) { color: red; }
-  </component>
 </template>
 
 <style scoped>
-* {
-  scroll-behavior: smooth;
-}
-
 article {
+  scroll-behavior: smooth;
   color: #aaa;
   white-space: break-spaces;
   word-spacing: unset;
@@ -231,15 +233,18 @@ article {
   /* width: 22em; */
 }
 
-article#reader::highlight(click) {
-  background: #aea;
-  color: rgb(37, 11, 237);
-}
 article::highlight(fixed) {
-  color: v-bind(hoverSelection);
   color: #000;
 }
 article::highlight(hover) {
-  color: red;
+  color: aliceblue;
+  background: cornflowerblue;
+}
+article::highlight(click) {
+  background: #aaa;
+}
+article::highlight(clickRange) {
+  background: #000;
+  color: #fff;
 }
 </style>
