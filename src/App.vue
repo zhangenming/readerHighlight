@@ -27,8 +27,6 @@ let dom: Node
 
 const scrollTop = ref(0)
 
-const clickSelection = ref("")
-
 const allRangesObj = ref<{ [s: string]: MyRange[] }>({})
 
 const allRangesObjFlat = computed(() =>
@@ -57,25 +55,32 @@ document.onmousemove = (evt) => {
     4
   )
 }
+document.onmousemove = watchChange(
+  (hover: any) => {
+    HighlightWrap(
+      "hover",
+      allRangesObjFlatOnScreen.value.filter((e) => e.query === hover),
+      4
+    )
+  },
+  (evt: any) => getClickedRange(evt)?.query
+)
 
-watchEffect(() => {
-  HighlightWrap(
-    "click",
-    allRangesObjFlatOnScreen.value.filter(
-      (e) => e.query === clickSelection.value
-    ),
-    3
-  )
-})
+function watchChange(fn: any, getArg?: any) {
+  let lastArgs: any
+
+  return function (arg: any) {
+    const a = getArg ? getArg(arg) : arg
+    if (lastArgs != a) {
+      lastArgs = a
+      fn(a)
+    }
+  }
+}
 
 const clickRange = ref<MyRange>()
 watchEffect(() => {
   clickRange.value && HighlightWrap("clickRange", [clickRange.value], 9)
-})
-
-const justOne = ref<MyRange>()
-watchEffect(() => {
-  justOne.value && HighlightWrap("justOne", [justOne.value], 19)
 })
 
 const selectedAllTerms = ref(new Set<string>())
@@ -139,7 +144,8 @@ function newSearch(query: string) {
     })
 
   if (ranges.length === 1) {
-    justOne.value = ranges[0]
+    HighlightWrap("justOne", ranges, 19)
+
     // setTimeout(() => {
     //   justOne.value = undefined
     // }, 3000)
@@ -148,9 +154,19 @@ function newSearch(query: string) {
   }
 }
 
+const clickSelection = watchChange((query: string) => {
+  HighlightWrap(
+    "clickSelection",
+    allRangesObjFlatOnScreen.value.filter((e) => e.query === query),
+    3
+  )
+})
+
+let oldQuery = ""
+let pos = scrollY
 function jumpPos(
   currentR: MyRange | undefined,
-  { ctrlKey, shiftKey }: KeyboardEvent | MouseEvent
+  { ctrlKey, shiftKey, clientY }: KeyboardEvent | MouseEvent
 ) {
   if (!currentR) return
 
@@ -162,15 +178,33 @@ function jumpPos(
     ? "preR"
     : "nextR"
 
-  const { query, [type]: nextR, y } = currentR
+  const { query, [type]: nextR } = currentR
 
-  clickSelection.value = query
+  // clickSelection(query)
+  oldQuery != query &&
+    HighlightWrap(
+      "clickSelection",
+      allRangesObjFlatOnScreen.value.filter((e) => e.query === query),
+      3
+    )
+  oldQuery = query
 
   clickRange.value = nextR
 
+  // scrollTo({
+  //   top: pos,
+  // })
+  // const top = nextR.y - currentR.y
+  // pos = top + scrollY
+  // scrollBy({
+  //   behavior: "smooth",
+  //   top,
+  // })
+
   scrollTo({
     behavior: "smooth",
-    top: nextR.y + (window.scrollY - y),
+    // top: nextR.y - y + 26 - (scrollY % 26),
+    top: nextR.y - clientY,
   })
 }
 
@@ -241,7 +275,7 @@ article::highlight(hover) {
   color: aliceblue;
   background: cornflowerblue;
 }
-article::highlight(click) {
+article::highlight(clickSelection) {
   background: #aaa;
 }
 article::highlight(clickRange) {
