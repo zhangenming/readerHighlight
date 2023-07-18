@@ -1,6 +1,7 @@
+<!-- 应用逻辑 vue逻辑分离 -->
 <script setup lang="ts">
 import { ref, computed, watchEffect } from "vue"
-import txt from "../txt/天道.txt?raw"
+import txt from "../txt/生死疲劳.txt?raw"
 
 type MyRange = Range & {
   x: number
@@ -26,7 +27,6 @@ let dom: Node
 
 const scrollTop = ref(0)
 
-const hoverSelection = ref("")
 const clickSelection = ref("")
 
 const allRangesObj = ref<{ [s: string]: MyRange[] }>({})
@@ -37,22 +37,26 @@ const allRangesObjFlat = computed(() =>
 const allRangesObjFlatOnScreen = computed(() => {
   const s = scrollTop.value
   const x = s + window.innerHeight
-  return allRangesObjFlat.value.filter(({ y }) => y > s && y < x)
+  return allRangesObjFlat.value.filter(({ y }) => y >= s && y <= x)
 })
 
 watchEffect(() => {
   HighlightWrap("all", allRangesObjFlatOnScreen.value, 1)
 })
 
-watchEffect(() => {
+let oldHover: string | undefined
+document.onmousemove = (evt) => {
+  const hover = getClickedRange(evt)?.query
+  if (oldHover === hover) return
+
+  oldHover = hover
+
   HighlightWrap(
     "hover",
-    allRangesObjFlatOnScreen.value.filter(
-      (e) => e.query === hoverSelection.value
-    ),
+    allRangesObjFlatOnScreen.value.filter((e) => e.query === hover),
     4
   )
-})
+}
 
 watchEffect(() => {
   HighlightWrap(
@@ -66,7 +70,7 @@ watchEffect(() => {
 
 const clickRange = ref<MyRange>()
 watchEffect(() => {
-  clickRange.value && HighlightWrap("clickRange", [clickRange.value.nextR], 9)
+  clickRange.value && HighlightWrap("clickRange", [clickRange.value], 9)
 })
 
 const justOne = ref<MyRange>()
@@ -79,10 +83,9 @@ const selectedAllTerms = ref(new Set<string>())
 setTimeout(() => {
   dom = document.querySelector("article")!.childNodes[0]
 
-  newSearch("(第一部分)")
-  newSearch("丁元英")
-  newSearch("小丹")
-  newSearch("遥远")
+  newSearch("叙述")
+  newSearch("改革")
+  newSearch("中国")
 
   document.onclick = (e) => {
     const s = selection + ""
@@ -92,32 +95,18 @@ setTimeout(() => {
       return selectedAllTerms.value.has(s) ? deleteItem(s) : newSearch(s)
     }
 
-    const r = XY2Range(e)
-    if (!r) return
-
-    goR(r, e.ctrlKey, e.shiftKey)
-  }
-
-  document.onscroll = () => {
-    scrollTop.value = document.documentElement.scrollTop
-  }
-
-  document.onmousemove = (e) => {
-    const r = XY2Range(e)
-    if (!r) return
-
-    hoverSelection.value = r.query
+    jumpPos(getClickedRange(e), e)
   }
 
   document.onkeydown = (e) => {
     if (e.altKey) {
       e.preventDefault()
-      goR(
-        e.shiftKey ? clickRange.value?.preR! : clickRange.value?.nextR!,
-        e.ctrlKey,
-        e.shiftKey
-      )
+      jumpPos(clickRange.value, e)
     }
+  }
+
+  document.onscroll = () => {
+    scrollTop.value = window.scrollY
   }
 })
 
@@ -126,7 +115,7 @@ function newSearch(query: string) {
 
   selectedAllTerms.value.add(query)
 
-  const ranges = searchTxt(txt, query)
+  const ranges = getPositions(txt, query)
     .map((pos) => createRange(pos, query))
     .map((range, idx, ranges) => {
       const firstR = ranges[0]
@@ -143,7 +132,7 @@ function newSearch(query: string) {
         nextR: ranges[idx + 1] || firstR,
 
         x,
-        y: y + document.documentElement.scrollTop, // 相对0的绝对距离
+        y: y + window.scrollY, // 相对0的绝对距离
         width,
         height,
       })
@@ -159,17 +148,29 @@ function newSearch(query: string) {
   }
 }
 
-function goR(r: MyRange, ctrlKey: boolean, shiftKey: boolean) {
-  clickSelection.value = r.query
-  clickRange.value = r
+function jumpPos(
+  currentR: MyRange | undefined,
+  { ctrlKey, shiftKey }: KeyboardEvent | MouseEvent
+) {
+  if (!currentR) return
 
-  scrollBy({
+  const type = ctrlKey
+    ? shiftKey
+      ? "firstR"
+      : "lastR"
+    : shiftKey
+    ? "preR"
+    : "nextR"
+
+  const { query, [type]: nextR, y } = currentR
+
+  clickSelection.value = query
+
+  clickRange.value = nextR
+
+  scrollTo({
     behavior: "smooth",
-    top:
-      (ctrlKey
-        ? r[shiftKey ? "firstR" : "lastR"]
-        : r[shiftKey ? "preR" : "nextR"]
-      ).y - r.y,
+    top: nextR.y + (window.scrollY - y),
   })
 }
 
@@ -179,7 +180,7 @@ function deleteItem(query: string) {
   delete allRangesObj.value[query]
 }
 
-function XY2Range({ pageX, pageY }: { pageX: number; pageY: number }) {
+function getClickedRange({ pageX, pageY }: { pageX: number; pageY: number }) {
   return allRangesObjFlat.value.find(({ x, y, width, height }) => {
     const xMatch = x <= pageX && pageX <= x + width
     const yMatch = y <= pageY && pageY <= y + height
@@ -200,12 +201,12 @@ function createRange(start: number, query: string) {
   return range
 }
 
-function searchTxt(txt: string, search: string) {
+function getPositions(txt: string, query: string) {
   const targets = []
-  let index = txt.indexOf(search)
+  let index = txt.indexOf(query)
   while (index !== -1) {
     targets.push(index)
-    index = txt.indexOf(search, index + 1)
+    index = txt.indexOf(query, index + 1)
   }
   return targets
 }
@@ -220,7 +221,6 @@ function searchTxt(txt: string, search: string) {
 <style scoped>
 article {
   scroll-behavior: smooth;
-  color: #fff;
   white-space: break-spaces;
   word-spacing: unset;
   word-wrap: break-word;
@@ -230,6 +230,8 @@ article {
   font-size: 20px;
   /* font-family: Consolas; */
   /* width: 22em; */
+  background: #fff;
+  color: #fff;
 }
 
 article::highlight(all) {
