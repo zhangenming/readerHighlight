@@ -9,11 +9,6 @@ type MyRange = Range & {
   width: number
   height: number
 
-  // firstY: number
-  // lastY: number
-  // nextY: number
-  // preY: number
-
   firstR: MyRange
   lastR: MyRange
   nextR: MyRange
@@ -25,13 +20,13 @@ type MyRange = Range & {
 const selection = getSelection()
 let dom: Node
 
-const scrollTop = ref(0)
-
 const allRangesObj = ref<{ [s: string]: MyRange[] }>({})
 
 const allRangesObjFlat = computed(() =>
   Object.values(allRangesObj.value).flat()
 )
+
+const scrollTop = ref(0)
 const allRangesObjFlatOnScreen = computed(() => {
   const s = scrollTop.value
   const x = s + window.innerHeight
@@ -67,24 +62,25 @@ document.onmousemove = watchChange(
 )
 
 function watchChange(fn: any, getArg?: any) {
-  let lastArgs: any
+  let lastArg: any
 
   return function (arg: any) {
-    const a = getArg ? getArg(arg) : arg
-    if (lastArgs != a) {
-      lastArgs = a
-      fn(a)
+    const argDone = getArg?.(arg) || arg
+    if (lastArg != argDone) {
+      lastArg = argDone
+      fn(argDone)
     }
   }
 }
 
-const clickRange = ref<MyRange>()
+const jumpedRange = ref<MyRange>()
 watchEffect(() => {
-  clickRange.value && HighlightWrap("clickRange", [clickRange.value], 9)
+  jumpedRange.value && HighlightWrap("jumpedRange", [jumpedRange.value], 9)
 })
 
 const selectedAllTerms = ref(new Set<string>())
 
+let clientY = 0
 setTimeout(() => {
   dom = document.querySelector("article")!.childNodes[0]
 
@@ -100,13 +96,14 @@ setTimeout(() => {
       return selectedAllTerms.value.has(s) ? deleteItem(s) : newSearch(s)
     }
 
+    clientY = e.clientY
     jumpPos(getClickedRange(e), e)
   }
 
   document.onkeydown = (e) => {
     if (e.altKey) {
       e.preventDefault()
-      jumpPos(clickRange.value, e)
+      jumpPos(jumpedRange.value, e)
     }
   }
 
@@ -166,7 +163,7 @@ let oldQuery = ""
 let pos = scrollY
 function jumpPos(
   currentR: MyRange | undefined,
-  { ctrlKey, shiftKey, clientY }: KeyboardEvent | MouseEvent
+  { ctrlKey, shiftKey }: KeyboardEvent | MouseEvent
 ) {
   if (!currentR) return
 
@@ -189,7 +186,7 @@ function jumpPos(
     )
   oldQuery = query
 
-  clickRange.value = nextR
+  jumpedRange.value = nextR
 
   // scrollTo({
   //   top: pos,
@@ -203,8 +200,7 @@ function jumpPos(
 
   scrollTo({
     behavior: "smooth",
-    // top: nextR.y - y + 26 - (scrollY % 26),
-    top: nextR.y - clientY,
+    top: nextR.y - clientY, // + (scrollY % 26),
   })
 }
 
@@ -278,7 +274,7 @@ article::highlight(hover) {
 article::highlight(clickSelection) {
   background: #aaa;
 }
-article::highlight(clickRange) {
+article::highlight(jumpedRange) {
   background: #000;
   color: #fff;
 }
@@ -288,5 +284,28 @@ article::highlight(justOne) {
   text-decoration-thickness: 1px;
   text-decoration-style: wavy;
   text-decoration-color: red;
+}
+
+article {
+  background: #666;
+  color: #ddd;
+}
+article::highlight(all) {
+  color: #fff;
+}
+article::highlight(hover) {
+  color: #aaa;
+  background: #fff;
+}
+article::highlight(clickSelection) {
+  color: #111;
+  background: #aaa;
+}
+article::highlight(jumpedRange) {
+  background: #fff;
+  color: #000;
+}
+article::highlight(justOne) {
+  color: #aaa;
 }
 </style>
