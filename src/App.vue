@@ -1,5 +1,7 @@
 <!-- 应用逻辑 vue逻辑分离 -->
 <script setup lang="ts">
+import { useStorage } from "@vueuse/core"
+
 import { ref, computed, watchEffect } from "vue"
 import txt from "../txt/生死疲劳.txt?raw"
 
@@ -20,10 +22,17 @@ type MyRange = Range & {
 const selection = getSelection()
 let dom: Node
 
-const allRangesObj = ref<{ [s: string]: MyRange[] }>({})
+const selectedAllTerms = ref(new Set<string>())
+const allRangesObj = ref<{
+  [s: string]: {
+    ranges: MyRange[]
+    show: boolean
+    justOne: boolean
+  }
+}>({})
 
 const allRangesObjFlat = computed(() =>
-  Object.values(allRangesObj.value).flat()
+  Object.values(allRangesObj.value).flatMap((e) => e.ranges)
 )
 
 const scrollTop = ref(0)
@@ -78,8 +87,6 @@ watchEffect(() => {
   jumpedRange.value && HighlightWrap("jumpedRange", [jumpedRange.value], 9)
 })
 
-const selectedAllTerms = ref(new Set<string>())
-
 let clientY = 0
 setTimeout(() => {
   dom = document.querySelector("article")!.childNodes[0]
@@ -117,6 +124,10 @@ function newSearch(query: string) {
 
   selectedAllTerms.value.add(query)
 
+  if (allRangesObj.value[query]) {
+    return (allRangesObj.value[query].show = true)
+  }
+
   const ranges = getPositions(txt, query)
     .map((pos) => createRange(pos, query))
     .map((range, idx, ranges) => {
@@ -140,14 +151,12 @@ function newSearch(query: string) {
       })
     })
 
-  if (ranges.length === 1) {
-    HighlightWrap("justOne", ranges, 19)
+  document.title = ranges.length + ""
 
-    // setTimeout(() => {
-    //   justOne.value = undefined
-    // }, 3000)
-  } else {
-    allRangesObj.value[query] = ranges
+  allRangesObj.value[query] = {
+    ranges,
+    show: true,
+    justOne: ranges.length === 1,
   }
 }
 
@@ -207,7 +216,7 @@ function jumpPos(
 function deleteItem(query: string) {
   selectedAllTerms.value.delete(query)
 
-  delete allRangesObj.value[query]
+  allRangesObj.value[query].show = false
 }
 
 function getClickedRange({ pageX, pageY }: { pageX: number; pageY: number }) {
