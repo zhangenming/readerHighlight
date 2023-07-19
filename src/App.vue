@@ -22,7 +22,7 @@ type MyRange = Range & {
 const selection = getSelection()
 let dom: Node
 
-const selectedAllTerms = ref(new Set<string>())
+const selectedAllTerms = useStorage("my-store", new Set<string>())
 const allRangesObj = ref<{
   [s: string]: {
     ranges: MyRange[]
@@ -91,9 +91,7 @@ let clientY = 0
 setTimeout(() => {
   dom = document.querySelector("article")!.childNodes[0]
 
-  newSearch("叙述")
-  newSearch("改革")
-  newSearch("中国")
+  selectedAllTerms.value.forEach(newSearch)
 
   document.onclick = (e) => {
     const s = selection + ""
