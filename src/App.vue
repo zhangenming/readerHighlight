@@ -1,8 +1,8 @@
 <!-- 应用逻辑 vue逻辑分离 -->
 <script setup lang="ts">
-import { useStorage } from "@vueuse/core"
+import { useLocalStorage } from "@vueuse/core"
 
-import { ref, computed, watchEffect } from "vue"
+import { ref, computed, watchEffect, onMounted, watch } from "vue"
 import txt from "../txt/生死疲劳.txt?raw"
 
 type MyRange = Range & {
@@ -20,55 +20,105 @@ type MyRange = Range & {
 }
 
 const selection = getSelection()
-let dom: Node
+const dom = ref<Node>()
+const newSearchCache: { [s: string]: MyRange[] } = {}
 
-const selectedAllTerms = useStorage("my-store", new Set<string>())
-const allRangesObj = ref<{
-  [s: string]: {
-    ranges: MyRange[]
-    show: boolean
-    justOne: boolean
-  }
-}>({})
-
-const allRangesObjFlat = computed(() =>
-  Object.values(allRangesObj.value).flatMap((e) => e.ranges)
-)
-
-const scrollTop = ref(0)
-const allRangesObjFlatOnScreen = computed(() => {
-  const s = scrollTop.value
-  const x = s + window.innerHeight
-  return allRangesObjFlat.value.filter(({ y }) => y >= s && y <= x)
+// scroll...
+const scrollTop = useLocalStorage<number>("scrollTop", null)
+onMounted(() => {
+  globalThis.scrollTo({ top: scrollTop.value, behavior: "smooth" })
 })
-
-watchEffect(() => {
-  HighlightWrap("all", allRangesObjFlatOnScreen.value, 1)
-})
-
-let oldHover: string | undefined
-document.onmousemove = (evt) => {
-  const hover = getClickedRange(evt)?.query
-  if (oldHover === hover) return
-
-  oldHover = hover
-
-  HighlightWrap(
-    "hover",
-    allRangesObjFlatOnScreen.value.filter((e) => e.query === hover),
-    4
-  )
+document.onscroll = () => {
+  scrollTop.value = globalThis.scrollY
 }
+
+// vue reactivity...
+const allTerms = useLocalStorage("allTerms", new Set<string>())
+
+const allRanges = computed(() => {
+  return [...allTerms.value].flatMap(addNewSlection)
+})
+
+// // 谁影响: scrollTop allRanges
+// // 影响谁:
+// const allRangesOnScreen = computed(() => {
+//   const s = scrollTop.value
+//   const x = s + globalThis.innerHeight
+//   return allRanges.value.filter(({ y }) => y >= s && y <= x) // todo使用二分算法减少运算量
+// })
+
+// const allRangesOnScreenFlag = computed(() => {
+//   return allRangesOnScreen.value.map((e) => e.startOffset).join("-")
+// })
+
+// onMounted(() => {
+//   watch(allRangesOnScreenFlag, () => {
+//     setHighlightColor("all", allRangesOnScreen.value.xx, 1) // todo分离渲染
+//   })
+// })
+onMounted(() => {
+  setHighlightColor("all", allRanges.value, 1) // todo分离渲染
+
+  watch(allRanges, () => {
+    setHighlightColor("all", allRanges.value, 1) // todo分离渲染
+  })
+})
+
+const jumpTargetRange = ref<MyRange>()
+watch(jumpTargetRange, (res) => {
+  res && setHighlightColor("jumpTargetRange", [res], 9)
+})
+
+// event...
 document.onmousemove = watchChange(
   (hover: any) => {
-    HighlightWrap(
+    setHighlightColor(
       "hover",
-      allRangesObjFlatOnScreen.value.filter((e) => e.query === hover),
+      allRanges.value.filter((e) => e.query === hover),
       4
     )
   },
   (evt: any) => getClickedRange(evt)?.query
 )
+
+let clientY = 0
+document.onclick = (e) => {
+  const query = selection + ""
+  selection?.empty()
+
+  if (query) {
+    if (query === "" || query.includes("\n")) return
+
+    if (allTerms.value.has(query)) {
+      return allTerms.value.delete(query)
+    }
+
+    allTerms.value.add(query)
+
+    document.title = addNewSlection(query).length + ""
+    return
+  }
+
+  clientY = e.clientY
+  const r = getClickedRange(e)
+
+  if (!r) return
+
+  jumpRange(r, e)
+
+  setHighlightColor(
+    "clickSelection",
+    allRanges.value.filter((e) => e.query === r.query),
+    3
+  )
+}
+
+document.onkeydown = (e) => {
+  if (e.altKey) {
+    e.preventDefault()
+    jumpRange(jumpTargetRange.value!, e)
+  }
+}
 
 function watchChange(fn: any, getArg?: any) {
   let lastArg: any
@@ -82,98 +132,38 @@ function watchChange(fn: any, getArg?: any) {
   }
 }
 
-const jumpedRange = ref<MyRange>()
-watchEffect(() => {
-  jumpedRange.value && HighlightWrap("jumpedRange", [jumpedRange.value], 9)
-})
+function addNewSlection(query: string) {
+  return (newSearchCache[query] =
+    newSearchCache[query] ||
+    getPositions(txt, query)
+      .map((pos) => createRange(pos, query))
+      .map((range, idx, ranges) => {
+        const firstR = ranges[0]
+        const lastR = ranges[ranges.length - 1]
 
-let clientY = 0
-setTimeout(() => {
-  dom = document.querySelector("article")!.childNodes[0]
+        const { x, y, width, height } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom, 这个信息是为了click的时候XY2Range用, 现在暂时用不到
 
-  selectedAllTerms.value.forEach(newSearch)
+        return Object.assign(range, {
+          query,
 
-  document.onclick = (e) => {
-    const s = selection + ""
-    selection?.empty()
+          firstR,
+          lastR,
+          preR: ranges[idx - 1] || lastR,
+          nextR: ranges[idx + 1] || firstR,
 
-    if (s) {
-      return selectedAllTerms.value.has(s) ? deleteItem(s) : newSearch(s)
-    }
-
-    clientY = e.clientY
-    jumpPos(getClickedRange(e), e)
-  }
-
-  document.onkeydown = (e) => {
-    if (e.altKey) {
-      e.preventDefault()
-      jumpPos(jumpedRange.value, e)
-    }
-  }
-
-  document.onscroll = () => {
-    scrollTop.value = window.scrollY
-  }
-})
-
-function newSearch(query: string) {
-  if (query === "" || query.includes("\n")) return
-
-  selectedAllTerms.value.add(query)
-
-  if (allRangesObj.value[query]) {
-    return (allRangesObj.value[query].show = true)
-  }
-
-  const ranges = getPositions(txt, query)
-    .map((pos) => createRange(pos, query))
-    .map((range, idx, ranges) => {
-      const firstR = ranges[0]
-      const lastR = ranges[ranges.length - 1]
-
-      const { x, y, width, height } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom, 这个信息是为了click的时候XY2Range用, 现在暂时用不到
-
-      return Object.assign(range, {
-        query,
-
-        firstR,
-        lastR,
-        preR: ranges[idx - 1] || lastR,
-        nextR: ranges[idx + 1] || firstR,
-
-        x,
-        y: y + window.scrollY, // 相对0的绝对距离
-        width,
-        height,
-      })
-    })
-
-  document.title = ranges.length + ""
-
-  allRangesObj.value[query] = {
-    ranges,
-    show: true,
-    justOne: ranges.length === 1,
-  }
+          x,
+          y: y + globalThis.scrollY, // 相对0的绝对距离
+          width,
+          height,
+        })
+      }))
 }
 
-const clickSelection = watchChange((query: string) => {
-  HighlightWrap(
-    "clickSelection",
-    allRangesObjFlatOnScreen.value.filter((e) => e.query === query),
-    3
-  )
-})
-
-let oldQuery = ""
 let pos = scrollY
-function jumpPos(
-  currentR: MyRange | undefined,
+function jumpRange(
+  currentR: MyRange,
   { ctrlKey, shiftKey }: KeyboardEvent | MouseEvent
 ) {
-  if (!currentR) return
-
   const type = ctrlKey
     ? shiftKey
       ? "firstR"
@@ -182,20 +172,9 @@ function jumpPos(
     ? "preR"
     : "nextR"
 
-  const { query, [type]: nextR } = currentR
+  jumpTargetRange.value = currentR[type]
 
-  // clickSelection(query)
-  oldQuery != query &&
-    HighlightWrap(
-      "clickSelection",
-      allRangesObjFlatOnScreen.value.filter((e) => e.query === query),
-      3
-    )
-  oldQuery = query
-
-  jumpedRange.value = nextR
-
-  // scrollTo({
+  // globalThis.scrollTo({
   //   top: pos,
   // })
   // const top = nextR.y - currentR.y
@@ -205,36 +184,36 @@ function jumpPos(
   //   top,
   // })
 
-  scrollTo({
+  globalThis.scrollTo({
     behavior: "smooth",
-    top: nextR.y - clientY, // + (scrollY % 26),
+    top: jumpTargetRange.value.y - clientY, // + (scrollY % 26),
   })
 }
 
-function deleteItem(query: string) {
-  selectedAllTerms.value.delete(query)
-
-  allRangesObj.value[query].show = false
-}
-
 function getClickedRange({ pageX, pageY }: { pageX: number; pageY: number }) {
-  return allRangesObjFlat.value.find(({ x, y, width, height }) => {
+  return allRanges.value.find(({ x, y, width, height }) => {
     const xMatch = x <= pageX && pageX <= x + width
     const yMatch = y <= pageY && pageY <= y + height
     return xMatch && yMatch
   })
 }
 
-function HighlightWrap(key: string, h: MyRange[], priority?: number) {
-  const H = new (window as any).Highlight(...h)
+const styleHighlightCache: { [s: string]: string } = {}
+function setHighlightColor(key: string, h: MyRange[], priority?: number) {
+  const flag = h.map((e) => e.startOffset).join("-")
+  if (styleHighlightCache[key] === flag) return
+  styleHighlightCache[key] = flag
+
+  const H = new (globalThis as any).Highlight(...h)
   H.priority = priority
   ;(CSS as any).highlights.set(key, H)
 }
 
 function createRange(start: number, query: string) {
   const range = new Range() as MyRange
-  range.setStart(dom, start)
-  range.setEnd(dom, start + query.length)
+  const d = dom.value!.childNodes[0]
+  range.setStart(d, start)
+  range.setEnd(d, start + query.length)
   return range
 }
 
@@ -250,7 +229,7 @@ function getPositions(txt: string, query: string) {
 </script>
 
 <template>
-  <article>
+  <article ref="dom">
     {{ txt }}
   </article>
 </template>
@@ -274,14 +253,14 @@ article {
 article::highlight(all) {
   color: #666;
 }
-article::highlight(hover) {
+/* article::highlight(hover) {
   color: aliceblue;
   background: cornflowerblue;
-}
+} */
 article::highlight(clickSelection) {
   background: #aaa;
 }
-article::highlight(jumpedRange) {
+article::highlight(jumpTargetRange) {
   background: #000;
   color: #fff;
 }
@@ -294,23 +273,23 @@ article::highlight(justOne) {
 }
 
 article {
-  background: #666;
   color: #ddd;
+  background: #666;
 }
 article::highlight(all) {
-  color: #fff;
+  color: #000;
 }
-article::highlight(hover) {
+/* article::highlight(hover) {
   color: #aaa;
   background: #fff;
-}
+} */
 article::highlight(clickSelection) {
   color: #111;
-  background: #aaa;
+  background: #ccc;
 }
-article::highlight(jumpedRange) {
+article::highlight(jumpTargetRange) {
+  color: #0f0;
   background: #fff;
-  color: #000;
 }
 article::highlight(justOne) {
   color: #aaa;
