@@ -5,7 +5,7 @@ import { ref, computed, watchEffect, onMounted, watch, nextTick } from "vue"
 import { MyRange, createRange, getPositions } from "./utils"
 import _txt from "../txt/史蒂夫·乔布斯传.txt?raw"
 
-const len = new URL(window.location + "").searchParams.get("len")
+const len = new URL(globalThis.location + "").searchParams.get("len")
 let txt = _txt
 txt = len ? _txt.slice(0, 1e5 * Number(len)) : _txt
 txt.length.xx
@@ -27,6 +27,7 @@ const jumpTargetRange = ref<MyRange>()
 
 // event
 let clientY = 0
+let 跳转之前的位置: number
 document.onclick = (e) => {
   const query = selection + ""
   selection?.empty()
@@ -61,6 +62,7 @@ document.onclick = (e) => {
 
   if (!r) return
 
+  跳转之前的位置 = globalThis.scrollY
   jumpRange(r, e)
 
   // setHighlightColor(
@@ -101,6 +103,13 @@ document.onkeydown = (e) => {
     e.preventDefault()
     jumpRange(jumpTargetRange.value!, e)
   }
+
+  if (e.key === "Backspace") {
+    globalThis.scrollTo({
+      behavior: "smooth",
+      top: 跳转之前的位置,
+    })
+  }
 }
 
 // scroll...
@@ -112,7 +121,6 @@ document.onscroll = () => {
   scrollTop.value = globalThis.scrollY
 }
 
-let pos = scrollY
 function jumpRange(
   currentR: MyRange,
   { ctrlKey, shiftKey }: KeyboardEvent | MouseEvent
