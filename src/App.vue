@@ -2,7 +2,15 @@
 <script setup lang="ts">
 import { useLocalStorage } from "@vueuse/core"
 import { ref, computed, onMounted, watch, nextTick, reactive } from "vue"
-import { MyRange, createRange, getPositions } from "./utils"
+import { MyRange, getPositions } from "./utils"
+import {
+  allRanges,
+  getScreenPointRange,
+  getScreenPointRangeIdx,
+  setAllranges,
+  setHighlights,
+} from "./core"
+
 import _txt from "../txt/天之下2.txt?raw"
 
 const len = new URL(globalThis.location + "").searchParams.get("len")
@@ -15,12 +23,10 @@ const dom = ref<Node>()
 // vue reactivity...
 const allWord = useLocalStorage("allWord", new Set<string>())
 onMounted(() => {
-  allWord.value.forEach((word) => setHighlights(word))
+  allWord.value.forEach((word) => setHighlights(word, txt, dom.value!))
 })
 
 const hoverWord = ref()
-
-const allRanges: MyRange[] = []
 
 const jumpTargetRange = ref<MyRange>()
 
@@ -40,7 +46,7 @@ document.onclick = (e) => {
     }
 
     allWord.value.add(query)
-    setHighlights(query)
+    setHighlights(query, txt, dom.value!)
 
     const len = getPositions(txt, query).length
     if (len === 1) {
@@ -53,6 +59,7 @@ document.onclick = (e) => {
     function del(query: string) {
       allWord.value.delete(query)
       ;(CSS as any).highlights.set(query, new (globalThis as any).Highlight())
+      setAllranges(allRanges.filter((e) => e.query != query))
     }
   }
 
@@ -113,11 +120,6 @@ document.onmousemove = (evt) => {
   // })
 }
 
-setInterval(() => {
-  autoScrollSpeed && window.scrollBy(0, 0.1 * autoScrollSpeed)
-  // globalThis.scrollY.xx
-}, 1)
-
 document.onkeydown = (e) => {
   if (e.altKey) {
     e.preventDefault()
@@ -131,6 +133,11 @@ document.onkeydown = (e) => {
     })
   }
 }
+
+setInterval(() => {
+  autoScrollSpeed && window.scrollBy(0, 0.1 * autoScrollSpeed)
+  // globalThis.scrollY.xx
+}, 1)
 
 // scroll...
 const scrollTop = useLocalStorage<number>("scrollTop", null)
@@ -169,65 +176,6 @@ function jumpRange(
     behavior: "smooth",
     top: jumpTargetRange.value.y - clientYLocal, // + (scrollY % 26),
   })
-}
-
-function getScreenPointRangeIdx(query?: string, range?: MyRange) {
-  return (
-    allRanges.filter((e) => e.query === query).findIndex((e) => e === range) + 1
-  )
-}
-// hack event
-function getScreenPointRange({
-  pageX,
-  pageY,
-}: {
-  pageX: number
-  pageY: number
-}) {
-  return allRanges.find(({ x, y, width, height }) => {
-    const xMatch = x <= pageX && pageX <= x + width
-    const yMatch = y <= pageY && pageY <= y + height
-    return xMatch && yMatch
-  })
-}
-
-const c: any = {}
-function setHighlights(word: string, key = word) {
-  if (c[word]) {
-    ;(CSS as any).highlights.set(key, c[word])
-    return
-  }
-
-  c[word] = new (globalThis as any).Highlight(...addNewSlection(word))
-  ;(CSS as any).highlights.set(key, c[word])
-
-  function addNewSlection(query: string) {
-    const r = getPositions(txt, query)
-      .map((pos) => createRange(dom.value!, pos, query))
-      .map((range, idx, ranges) => {
-        const firstR = ranges[0]
-        const lastR = ranges[ranges.length - 1]
-
-        const { x, y, width, height } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom, 这个信息是为了click的时候XY2Range用, 现在暂时用不到
-
-        return Object.assign(range, {
-          query,
-
-          firstR,
-          lastR,
-          preR: ranges[idx - 1] || lastR,
-          nextR: ranges[idx + 1] || firstR,
-
-          x,
-          y: y + globalThis.scrollY, // 相对0的绝对距离
-          width,
-          height,
-        })
-      })
-
-    allRanges.push(...r)
-    return r
-  }
 }
 
 const boss = false
