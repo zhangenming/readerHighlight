@@ -6,18 +6,23 @@ export function createRange(dom: Node, start: number, query: string) {
   return range
 }
 
-export function getPositions(txt: string, query: string) {
+const getPositionsCache: { [s: string]: number[] } = {}
+export function getPositions(txt: string, query?: string) {
+  if (!query) return []
+
+  if (getPositionsCache[query]) return getPositionsCache[query]
+
   if (query === "") {
-    // console.error("txt")
     return []
   }
+
   const targets = []
   let index = txt.indexOf(query)
   while (index !== -1) {
     targets.push(index)
     index = txt.indexOf(query, index + 1)
   }
-  return targets
+  return (getPositionsCache[query] = targets)
 }
 
 export type MyRange = Range & {

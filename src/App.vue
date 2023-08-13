@@ -1,14 +1,13 @@
 <!-- 应用逻辑 vue逻辑分离 -->
 <script setup lang="ts">
 import { useLocalStorage } from "@vueuse/core"
-import { ref, computed, watchEffect, onMounted, watch, nextTick } from "vue"
+import { ref, computed, onMounted, watch, nextTick, reactive } from "vue"
 import { MyRange, createRange, getPositions } from "./utils"
 import _txt from "../txt/天之下2.txt?raw"
 
 const len = new URL(globalThis.location + "").searchParams.get("len")
 let txt = _txt
 txt = len ? _txt.slice(0, 1e5 * Number(len)) : _txt
-txt.length.xx
 
 const selection = getSelection()
 const dom = ref<Node>()
@@ -64,12 +63,6 @@ document.onclick = (e) => {
 
   跳转之前的位置 = globalThis.scrollY
   jumpRange(r, e)
-
-  // setHighlightColor(
-  //   "clickSelection",
-  //   allRanges.filter((e) => e.query === r.query),
-  //   3
-  // )
 }
 
 // 文本量多少 渲染量多少(本word/全word) 是否第一次
@@ -78,18 +71,34 @@ document.onclick = (e) => {
 //  16  50  200
 
 let autoScrollSpeed = 0
-let _word = ""
+let _word: string | undefined
+
+const info = ref({ current: 0, all: 0, x: 0, y: 0 })
+const 鼠标位置绝对值 = "y"
 document.onmousemove = (evt) => {
+  // 设置滚动速度
   autoScrollSpeed =
     evt.clientY / globalThis.innerHeight > 0.99
       ? evt.clientX / globalThis.innerWidth
       : 0
 
-  const word = getScreenPointRange(evt)?.query || ""
+  // 设置hover
+  const range = getScreenPointRange(evt)
+  const word = range?.query
+
+  // 设置hover idx
+  info.value = {
+    all: getPositions(txt, word).length,
+    current: getScreenPointRangeIdx(word, range),
+    x: evt.x,
+    y: evt[鼠标位置绝对值],
+  }
+
   if (_word === word) return
   _word = word
 
   hoverWord.value = word
+
   // setHighlights(word, "hover")
 
   // const t = +new Date()
@@ -162,6 +171,11 @@ function jumpRange(
   })
 }
 
+function getScreenPointRangeIdx(query?: string, range?: MyRange) {
+  return (
+    allRanges.filter((e) => e.query === query).findIndex((e) => e === range) + 1
+  )
+}
 // hack event
 function getScreenPointRange({
   pageX,
@@ -177,42 +191,6 @@ function getScreenPointRange({
   })
 }
 
-type ValidKeys = "hover" | "clickSelection" | "jumpTargetRange" | "all"
-
-const styleHighlightCache: { [s in ValidKeys]: { [s: string]: any } } = {
-  hover: {},
-  clickSelection: {},
-  jumpTargetRange: {},
-  all: {},
-}
-
-function setHighlightColor(
-  key: ValidKeys,
-  h: MyRange[],
-  priority?: number,
-  hoverValue: string = "x"
-) {
-  if (key === "hover") {
-    if (styleHighlightCache.hover.now === hoverValue) return
-
-    const H = styleHighlightCache.hover[hoverValue]
-    if (H) {
-      ;(CSS as any).highlights.set(key, H.xx)
-      styleHighlightCache.hover.now = hoverValue
-      return
-    }
-  }
-
-  const H = new (globalThis as any).Highlight(...h)
-  H.priority = priority
-  ;(CSS as any).highlights.set(key, H)
-
-  if (key === "hover") {
-    styleHighlightCache.hover[hoverValue] = H
-    styleHighlightCache.hover.now = hoverValue
-  }
-}
-
 const c: any = {}
 function setHighlights(word: string, key = word) {
   if (c[word]) {
@@ -220,11 +198,8 @@ function setHighlights(word: string, key = word) {
     return
   }
 
-  const ranges = addNewSlection(word)
-  const H = new (globalThis as any).Highlight(...ranges)
-  ;(CSS as any).highlights.set(key, H)
-
-  c[word] = H
+  c[word] = new (globalThis as any).Highlight(...addNewSlection(word))
+  ;(CSS as any).highlights.set(key, c[word])
 
   function addNewSlection(query: string) {
     const r = getPositions(txt, query)
@@ -261,9 +236,28 @@ const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
 </script>
 
 <template>
-  <article ref="dom">
-    {{ txt }}
-  </article>
+  <div>
+    <article ref="dom">
+      {{ txt }}
+    </article>
+  </div>
+
+  <div
+    v-show="info.current"
+    :style="`
+      top: ${info.y + 10}px;
+      left: ${info.x + 10}px;
+      position: fixed;
+      padding: 5px;
+      border: 2px solid darkred;
+      background: cornflowerblue;
+      color: white;
+      font-weight: 900;
+      border-radius: 10px;
+    `"
+  >
+    {{ info.current }} / {{ info.all }}
+  </div>
 
   <component is="style" v-for="word of allWord">
     article::highlight({{ word }}) {{ z }}
