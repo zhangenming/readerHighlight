@@ -3,7 +3,7 @@
 import { useLocalStorage } from "@vueuse/core"
 import { ref, computed, watchEffect, onMounted, watch, nextTick } from "vue"
 import { MyRange, createRange, getPositions } from "./utils"
-import _txt from "../txt/史蒂夫·乔布斯传.txt?raw"
+import _txt from "../txt/天之下2.txt?raw"
 
 const len = new URL(globalThis.location + "").searchParams.get("len")
 let txt = _txt
@@ -26,7 +26,7 @@ const allRanges: MyRange[] = []
 const jumpTargetRange = ref<MyRange>()
 
 // event
-let clientY = 0
+let clientYLocal = 0
 let 跳转之前的位置: number
 document.onclick = (e) => {
   const query = selection + ""
@@ -57,7 +57,7 @@ document.onclick = (e) => {
     }
   }
 
-  clientY = e.clientY
+  clientYLocal = e.clientY
   const r = getScreenPointRange(e)
 
   if (!r) return
@@ -77,11 +77,17 @@ document.onclick = (e) => {
 //  50  200 800 1600
 //  16  50  200
 
-let w = ""
+let autoScrollSpeed = 0
+let _word = ""
 document.onmousemove = (evt) => {
+  autoScrollSpeed =
+    evt.clientY / globalThis.innerHeight > 0.99
+      ? evt.clientX / globalThis.innerWidth
+      : 0
+
   const word = getScreenPointRange(evt)?.query || ""
-  if (w === word) return
-  w = word
+  if (_word === word) return
+  _word = word
 
   hoverWord.value = word
   // setHighlights(word, "hover")
@@ -97,6 +103,11 @@ document.onmousemove = (evt) => {
   //   document.title = +new Date() - t
   // })
 }
+
+setInterval(() => {
+  autoScrollSpeed && window.scrollBy(0, 0.1 * autoScrollSpeed)
+  // globalThis.scrollY.xx
+}, 1)
 
 document.onkeydown = (e) => {
   if (e.altKey) {
@@ -147,7 +158,7 @@ function jumpRange(
 
   globalThis.scrollTo({
     behavior: "smooth",
-    top: jumpTargetRange.value.y - clientY, // + (scrollY % 26),
+    top: jumpTargetRange.value.y - clientYLocal, // + (scrollY % 26),
   })
 }
 
