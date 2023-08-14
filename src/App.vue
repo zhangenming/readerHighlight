@@ -13,7 +13,8 @@ import {
 
 import _txt from "../txt/命运.txt?raw"
 
-const len = new URL(globalThis.location + "").searchParams.get("len")
+const { searchParams } = new URL(globalThis.location + "")
+const len = searchParams.get("len")
 let txt = _txt
 txt = len ? _txt.slice(0, 1e5 * Number(len)) : _txt
 
@@ -77,23 +78,14 @@ document.onclick = (e) => {
 //  50  200 800 1600
 //  16  50  200
 
-let autoScrollSpeed = 0
-let _autoScrollSpeed = 0
 let _word: string | undefined
 
 const info = ref({ current: 0, all: 0, x: 0, y: 0 })
 const 鼠标位置绝对值 = "y"
 document.onmousemove = (evt) => {
-  // 设置滚动速度
-  autoScrollSpeed =
-    evt.clientY / globalThis.innerHeight > 0.99
-      ? evt.clientX / globalThis.innerWidth
-      : 0
-  if (autoScrollSpeed != 0) {
-    _autoScrollSpeed = autoScrollSpeed
-  }
+  // 关闭滚动
+  autoScrolling = false
 
-  // 设置hover
   const range = getScreenPointRange(evt)
   const word = range?.query
 
@@ -108,6 +100,7 @@ document.onmousemove = (evt) => {
   if (_word === word) return
   _word = word
 
+  // 设置hover
   hoverWord.value = word
 
   // setHighlights(word, "hover")
@@ -124,43 +117,51 @@ document.onmousemove = (evt) => {
   // })
 }
 
+let autoScrolling = false
+const autoScrollSpeed = useLocalStorage("autoScrollSpeed", 0.05)
 document.onkeydown = (e) => {
-  // e.key.xx
+  const { key } = e
 
-  if (e.altKey) {
+  if (key === "Alt") {
     e.preventDefault()
     jumpRange(jumpTargetRange.value!, e)
   }
 
-  if (e.key === "Backspace") {
+  if (key === "Backspace") {
     globalThis.scrollTo({
       behavior: "smooth",
       top: 跳转之前的位置,
     })
   }
 
-  if (e.key === "Enter") {
-    autoScrollSpeed = _autoScrollSpeed
+  // 开启/关闭
+  if (key === "Enter") {
+    autoScrolling = !autoScrolling
   }
-  if (e.key === "ArrowLeft") {
-    autoScrollSpeed *= 0.9
-  }
-  if (e.key === "ArrowRight") {
-    _autoScrollSpeed = autoScrollSpeed
-    autoScrollSpeed = 10
+
+  // 减速
+  if (key === "ArrowLeft") {
+    autoScrollSpeed.value *= 0.001
     setTimeout(() => {
-      autoScrollSpeed = _autoScrollSpeed * 1.1
+      autoScrollSpeed.value *= 900 // 最终是原来的90%
+    }, 5000)
+  }
+
+  // 加速
+  if (key === "ArrowRight") {
+    autoScrollSpeed.value *= 11
+    setTimeout(() => {
+      autoScrollSpeed.value *= 0.1 // 最终是原来的110%
     }, 1000)
   }
 }
 
-setInterval(() => {
-  autoScrollSpeed && globalThis.scrollBy(0, 0.1 * autoScrollSpeed)
-  // globalThis.scrollY.xx
-}, 1)
-
 // scroll...
-const scrollTop = useLocalStorage<number>("scrollTop", null)
+setInterval(() => {
+  autoScrolling && globalThis.scrollBy(0, autoScrollSpeed.value)
+})
+
+const scrollTop = useLocalStorage("scrollTop", 0)
 onMounted(() => {
   globalThis.scrollTo({ top: scrollTop.value, behavior: "smooth" })
 })
@@ -204,6 +205,13 @@ const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
 </script>
 
 <template>
+  <div
+    v-if="searchParams.has('dev')"
+    style="position: fixed; top: 0; background: cornflowerblue; color: white"
+  >
+    <div>{{ autoScrollSpeed.toFixed(2) }}</div>
+  </div>
+
   <div>
     <article ref="dom">
       {{ txt }}
@@ -257,42 +265,4 @@ article {
   background: #fff;
   color: black;
 }
-
-/* article::highlight(clickSelection) {
-  background: #aaa;
-}
-article::highlight(jumpTargetRange) {
-  background: #000;
-  color: #fff;
-}
-article::highlight(justOne) {
-  color: #666;
-  text-decoration-line: line-through;
-  text-decoration-thickness: 1px;
-  text-decoration-style: wavy;
-  text-decoration-color: red;
-} */
-
-/* article {
-  color: #000;
-  background: #fff;
-}
-article::highlight(all) {
-  color: red;
-}
-article::highlight(hover) {
-  color: #fff;
-  background: red;
-}
-article::highlight(clickSelection) {
-  color: #111;
-  background: #ccc;
-}
-article::highlight(jumpTargetRange) {
-  color: #fff;
-  background: #000;
-}
-article::highlight(justOne) {
-  color: #aaa;
-} */
 </style>
