@@ -11,7 +11,7 @@ import {
   setHighlights,
 } from "./core"
 
-import _txt from "../txt/天之下2.txt?raw"
+import _txt from "../txt/命运.txt?raw"
 
 const len = new URL(globalThis.location + "").searchParams.get("len")
 let txt = _txt
@@ -78,6 +78,7 @@ document.onclick = (e) => {
 //  16  50  200
 
 let autoScrollSpeed = 0
+let _autoScrollSpeed = 0
 let _word: string | undefined
 
 const info = ref({ current: 0, all: 0, x: 0, y: 0 })
@@ -88,6 +89,9 @@ document.onmousemove = (evt) => {
     evt.clientY / globalThis.innerHeight > 0.99
       ? evt.clientX / globalThis.innerWidth
       : 0
+  if (autoScrollSpeed != 0) {
+    _autoScrollSpeed = autoScrollSpeed
+  }
 
   // 设置hover
   const range = getScreenPointRange(evt)
@@ -121,6 +125,8 @@ document.onmousemove = (evt) => {
 }
 
 document.onkeydown = (e) => {
+  // e.key.xx
+
   if (e.altKey) {
     e.preventDefault()
     jumpRange(jumpTargetRange.value!, e)
@@ -132,10 +138,24 @@ document.onkeydown = (e) => {
       top: 跳转之前的位置,
     })
   }
+
+  if (e.key === "Enter") {
+    autoScrollSpeed = _autoScrollSpeed
+  }
+  if (e.key === "ArrowLeft") {
+    autoScrollSpeed *= 0.9
+  }
+  if (e.key === "ArrowRight") {
+    _autoScrollSpeed = autoScrollSpeed
+    autoScrollSpeed = 10
+    setTimeout(() => {
+      autoScrollSpeed = _autoScrollSpeed * 1.1
+    }, 1000)
+  }
 }
 
 setInterval(() => {
-  autoScrollSpeed && window.scrollBy(0, 0.1 * autoScrollSpeed)
+  autoScrollSpeed && globalThis.scrollBy(0, 0.1 * autoScrollSpeed)
   // globalThis.scrollY.xx
 }, 1)
 
