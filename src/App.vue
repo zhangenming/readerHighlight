@@ -161,13 +161,15 @@ setInterval(() => {
   autoScrolling && globalThis.scrollBy(0, autoScrollSpeed.value)
 })
 
-const scrollTop = useLocalStorage("scrollTop", 0)
-onMounted(() => {
-  globalThis.scrollTo({ top: scrollTop.value, behavior: "smooth" })
-})
+let scrollHeight: number
+const scrollY = useLocalStorage("scrollY", 0)
 document.onscroll = () => {
-  scrollTop.value = globalThis.scrollY
+  scrollY.value = globalThis.scrollY
 }
+onMounted(() => {
+  scrollHeight = document.body.scrollHeight
+  globalThis.scrollTo({ top: scrollY.value, behavior: "smooth" })
+})
 
 function jumpRange(
   currentR: MyRange,
@@ -206,10 +208,13 @@ const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
 
 <template>
   <div
-    v-if="searchParams.has('dev')"
-    style="position: fixed; top: 0; background: cornflowerblue; color: white"
+    style="position: fixed; right: 0; background: cornflowerblue; color: white"
   >
-    <div>{{ autoScrollSpeed.toFixed(2) }}</div>
+    <!-- 进程 -->
+    <div>{{ (scrollY / scrollHeight / 0.01).toFixed(2) }}</div>
+
+    <!-- 速度 -->
+    <div v-show="autoScrolling">{{ autoScrollSpeed.toFixed(2) }}</div>
   </div>
 
   <div>
