@@ -128,14 +128,14 @@ document.onkeydown = (e) => {
   }
 
   if (key === "Backspace") {
-    globalThis.scrollTo({
-      behavior: "smooth",
-      top: 跳转之前的位置,
-    })
+    Backspace("smooth")
   }
 
   // 开启/关闭
   if (key === "Enter") {
+    if (跳转之前的位置 && !autoScrolling) {
+      Backspace("instant")
+    }
     autoScrolling = !autoScrolling
   }
 
@@ -143,28 +143,40 @@ document.onkeydown = (e) => {
   if (key === "ArrowLeft") {
     autoScrollSpeed.value *= 0.001
     setTimeout(() => {
-      autoScrollSpeed.value *= 900 // 最终是原来的90%
-    }, 5000)
+      autoScrollSpeed.value *= 1000 * 0.9
+    }, 1000 * 30)
   }
 
   // 加速
   if (key === "ArrowRight") {
-    autoScrollSpeed.value *= 11
+    const S = 20
+    autoScrollSpeed.value *= S
     setTimeout(() => {
-      autoScrollSpeed.value *= 0.1 // 最终是原来的110%
-    }, 1000)
+      autoScrollSpeed.value *= 1.1 / S // 抵消上面的10, 最终是原来的110%
+    }, 1000 * 1)
+  }
+
+  function Backspace(behavior: "smooth" | "instant") {
+    globalThis.scrollTo({
+      behavior,
+      top: 跳转之前的位置,
+    })
+    跳转之前的位置 = 0
   }
 }
 
 // scroll...
 setInterval(() => {
-  autoScrolling && globalThis.scrollBy(0, autoScrollSpeed.value)
-})
+  autoScrolling &&
+    globalThis.scrollBy({ top: autoScrollSpeed.value, behavior: "instant" })
+}, 8)
 
 let scrollHeight: number
 const scrollY = useLocalStorage("scrollY", 0)
-document.onscroll = () => {
+document.onscroll = (e) => {
   scrollY.value = globalThis.scrollY
+
+  info.value = {} as any
 }
 onMounted(() => {
   scrollHeight = document.body.scrollHeight
@@ -185,16 +197,6 @@ function jumpRange(
 
   jumpTargetRange.value = currentR[type]
 
-  // globalThis.scrollTo({
-  //   top: pos,
-  // })
-  // const top = nextR.y - currentR.y
-  // pos = top + scrollY
-  // scrollBy({
-  //   behavior: "smooth",
-  //   top,
-  // })
-
   globalThis.scrollTo({
     behavior: "smooth",
     top: jumpTargetRange.value.y - clientYLocal, // + (scrollY % 26),
@@ -214,7 +216,7 @@ const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
     <div>{{ (scrollY / scrollHeight / 0.01).toFixed(2) }}</div>
 
     <!-- 速度 -->
-    <div v-show="autoScrolling">{{ autoScrollSpeed.toFixed(2) }}</div>
+    <div v-show="autoScrolling">{{ (autoScrollSpeed * 20).toFixed(2) }}</div>
   </div>
 
   <div>
