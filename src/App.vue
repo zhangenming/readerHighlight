@@ -182,9 +182,8 @@ document.onkeydown = (e) => {
   }
 }
 
-const boss = false
-const z = boss ? `{color: #eee;}` : `{ color: red; }`
-const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
+const wordStyle = `{ color: red;background: #fff; }` // not work
+const hoverWordStyle = `{ color: #fff;background: red;}`
 </script>
 
 <template>
@@ -223,18 +222,27 @@ const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
   </div> -->
 
   <component is="style" v-for="word of allWord">
-    article::highlight({{ word }}) {{ z }}
+    <!-- {{
+      word === hoverWord
+        ? `article::highlight(${word})${hoverWordStyle}`
+        : `article::highlight(${word})${wordStyle}`
+    }}
+
+    article::highlight({{ word }})
+    {{
+      word === hoverWord
+        ? hoverWordStyle
+        : wordStyle
+    }} -->
+
+    article::highlight({{ word }}){{ wordStyle }}
   </component>
+
   <component is="style">
-    article::highlight({{ hoverWord }}) {{ x }}
+    article::highlight({{ hoverWord }}){{ hoverWordStyle }}
   </component>
-
-  <component is="style"> article::highlight(hover) {color: #333;} </component>
-
-  <!-- <component is="style" v-for="w of allWord" :key="w">
-    article::highlight({{ w }}) {color:
-    {{ w === hoverWord ? "#333" : "#eee" }};}
-  </component> -->
+  <!-- article::highlight({{ word }}):hover {{ hoverWordStyle }} -->
+  <!-- 可惜不支持:hover和事件机制 需要使用JS模拟 -->
 </template>
 
 <style>
