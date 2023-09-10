@@ -8,14 +8,11 @@ import {
   getScreenPointRangeIdx,
   setHighlights,
 } from "./core"
-
-import _txt from "../txt/四世同堂：足本：全三册 (老舍) (Z-Library).txt?raw"
 import { jumpRange } from "./reader"
 
-const { searchParams } = new URL(globalThis.location + "")
-const len = searchParams.get("len")
-let txt = _txt
-txt = len ? _txt.slice(0, 1e5 * Number(len)) : _txt
+import _txt from "../txt/四世同堂：足本：全三册 (老舍) (Z-Library).txt?raw"
+
+const txt = _txt.replaceAll("\n\n\n", "\n\n")
 
 const selection = getSelection()
 const dom = ref<Node>()
@@ -80,7 +77,7 @@ const info = ref({ current: 0, all: 0, x: 0, y: 0 })
 const 鼠标位置绝对值 = "y"
 document.onmousemove = (evt) => {
   // 关闭滚动
-  autoScrolling = false
+  openScroll = false
 
   const range = getScreenPointRange(evt)
   const word = range?.query
@@ -113,14 +110,14 @@ document.onmousemove = (evt) => {
 
 // scroll...
 setInterval(() => {
-  autoScrolling &&
-    globalThis.scrollBy({ top: autoScrollSpeed.value, behavior: "instant" })
+  openScroll &&
+    globalThis.scrollBy({ top: speedScroll.value, behavior: "instant" })
 })
 
 const scrollY = useLocalStorage("scrollY", 0) // 当前滚动条位置
 let scrollHeight: number // 滚动条完整高度
-let autoScrolling = false
-const autoScrollSpeed = useLocalStorage("autoScrollSpeed", 0.05)
+let openScroll = false
+const speedScroll = useLocalStorage("speedScroll", 0.05)
 document.onscroll = (e) => {
   scrollY.value = globalThis.scrollY
 
@@ -153,26 +150,26 @@ document.onkeydown = (e) => {
 
   // 开启/关闭
   if (key === "Enter") {
-    if (跳转之前的位置 && !autoScrolling) {
-      Backspace("instant")
-    }
-    autoScrolling = !autoScrolling
+    // if (跳转之前的位置 && !openScroll) {
+    //   Backspace("instant")
+    // }
+    openScroll = !openScroll
   }
 
   // 减速
   if (key === "ArrowLeft") {
-    autoScrollSpeed.value *= 0.001
+    speedScroll.value *= 0.001
     setTimeout(() => {
-      autoScrollSpeed.value *= 1000 * 0.9
+      speedScroll.value *= 1000 * 0.9
     }, 1000 * 30)
   }
 
   // 加速
   if (key === "ArrowRight") {
     const S = 20
-    autoScrollSpeed.value *= S
+    speedScroll.value *= S
     setTimeout(() => {
-      autoScrollSpeed.value *= 1.1 / S // 抵消上面的10, 最终是原来的110%
+      speedScroll.value *= 1.1 / S // 抵消上面的10, 最终是原来的110%
     }, 1000 * 1)
   }
 
@@ -199,7 +196,7 @@ const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
     <div>{{ (scrollY / scrollHeight / 0.01).toFixed(2) }}</div>
 
     <!-- 速度 -->
-    <div v-show="autoScrolling">{{ (autoScrollSpeed * 20).toFixed(2) }}</div>
+    <div v-show="openScroll">{{ (speedScroll * 20).toFixed(2) }}</div>
   </div>
 
   <div>
