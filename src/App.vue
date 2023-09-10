@@ -10,41 +10,7 @@ import {
 } from "./core"
 
 import _txt from "../txt/四世同堂：足本：全三册 (老舍) (Z-Library).txt?raw"
-
-// const o = [..._txt].reduce((o, e, i, arr) => {
-//   if (!o[e]) o[e] = { l: [], r: [] }
-
-//   const l = arr[i - 1]
-//   const r = arr[i + 1]
-//   o[e].l.push(l)
-//   o[e].r.push(r)
-//   return o
-// }, {} as { [s: string]: { l: string[]; r: string[] } })
-
-// o.xx
-// const t = Object.entries(o).filter(([k, v]) => v.l.length > 10)
-
-// t.forEach(([k, v]) => {
-//   if ([...new Set(v.r)].length === 1) {
-//     console.log(`${k}->${v.r[0]}`)
-//   }
-// })
-
-// console.log("\n\n\n")
-
-// t.forEach(([k, v]) => {
-//   if ([...new Set(v.l)].length === 1) {
-//     console.log(`${v.l[0]}<-${k}`)
-//   }
-// })
-
-// console.log("\n\n\n")
-
-// t.forEach(([k, v]) => {
-//   if ([...new Set(v.r)].length === 1 && [...new Set(v.l)].length === 1) {
-//     console.log(`${v.l[0]}<-${k}->${v.r[0]}`)
-//   }
-// })
+import { jumpRange } from "./reader"
 
 const { searchParams } = new URL(globalThis.location + "")
 const len = searchParams.get("len")
@@ -100,7 +66,7 @@ document.onclick = (e) => {
   if (!r) return
 
   跳转之前的位置 = globalThis.scrollY
-  jumpRange(r, e)
+  jumpRange(r, e, jumpTargetRange, clientYLocal)
 }
 
 // 文本量多少 渲染量多少(本word/全word) 是否第一次
@@ -145,12 +111,40 @@ document.onmousemove = (evt) => {
   // })
 }
 
+// scroll...
+setInterval(() => {
+  autoScrolling &&
+    globalThis.scrollBy({ top: autoScrollSpeed.value, behavior: "instant" })
+})
+
+const scrollY = useLocalStorage("scrollY", 0) // 当前滚动条位置
+let scrollHeight: number // 滚动条完整高度
+let autoScrolling = false
+const autoScrollSpeed = useLocalStorage("autoScrollSpeed", 0.05)
+document.onscroll = (e) => {
+  scrollY.value = globalThis.scrollY
+
+  info.value = {} as any
+
+  setColor()
+}
+onMounted(() => {
+  scrollHeight = document.body.scrollHeight
+  globalThis.scrollTo({ top: scrollY.value, behavior: "smooth" })
+})
+
+function setColor() {
+  allWord.value.forEach((query) =>
+    setHighlights(query, txt, dom.value!, globalThis.scrollY)
+  )
+}
+
 document.onkeydown = (e) => {
   const { key } = e
 
   if (key === "Alt") {
     e.preventDefault()
-    jumpRange(jumpTargetRange.value!, e)
+    jumpRange(jumpTargetRange.value!, e, jumpTargetRange, clientYLocal)
   }
 
   if (key === "Backspace") {
@@ -189,54 +183,6 @@ document.onkeydown = (e) => {
     })
     跳转之前的位置 = 0
   }
-}
-
-// scroll...
-setInterval(() => {
-  autoScrolling &&
-    globalThis.scrollBy({ top: autoScrollSpeed.value, behavior: "instant" })
-})
-
-const scrollY = useLocalStorage("scrollY", 0) // 当前滚动条位置
-let scrollHeight: number // 滚动条完整高度
-let autoScrolling = false
-const autoScrollSpeed = useLocalStorage("autoScrollSpeed", 0.05)
-document.onscroll = (e) => {
-  scrollY.value = globalThis.scrollY
-
-  info.value = {} as any
-
-  setColor()
-}
-onMounted(() => {
-  scrollHeight = document.body.scrollHeight
-  globalThis.scrollTo({ top: scrollY.value, behavior: "smooth" })
-})
-
-function setColor() {
-  allWord.value.forEach((query) =>
-    setHighlights(query, txt, dom.value!, globalThis.scrollY)
-  )
-}
-
-function jumpRange(
-  currentR: MyRange,
-  { ctrlKey, shiftKey }: KeyboardEvent | MouseEvent
-) {
-  const type = ctrlKey
-    ? shiftKey
-      ? "firstR"
-      : "lastR"
-    : shiftKey
-    ? "preR"
-    : "nextR"
-
-  jumpTargetRange.value = currentR[type]
-
-  globalThis.scrollTo({
-    behavior: "smooth",
-    top: jumpTargetRange.value.y - clientYLocal, // + (scrollY % 26),
-  })
 }
 
 const boss = false

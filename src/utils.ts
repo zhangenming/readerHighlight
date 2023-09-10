@@ -38,3 +38,38 @@ export type MyRange = Range & {
 
   query: string
 }
+
+// const o = [..._txt].reduce((o, e, i, arr) => {
+//   if (!o[e]) o[e] = { l: [], r: [] }
+
+//   const l = arr[i - 1]
+//   const r = arr[i + 1]
+//   o[e].l.push(l)
+//   o[e].r.push(r)
+//   return o
+// }, {} as { [s: string]: { l: string[]; r: string[] } })
+
+// o.xx
+// const t = Object.entries(o).filter(([k, v]) => v.l.length > 10)
+
+// t.forEach(([k, v]) => {
+//   if ([...new Set(v.r)].length === 1) {
+//     console.log(`${k}->${v.r[0]}`)
+//   }
+// })
+
+// console.log("\n\n\n")
+
+// t.forEach(([k, v]) => {
+//   if ([...new Set(v.l)].length === 1) {
+//     console.log(`${v.l[0]}<-${k}`)
+//   }
+// })
+
+// console.log("\n\n\n")
+
+// t.forEach(([k, v]) => {
+//   if ([...new Set(v.r)].length === 1 && [...new Set(v.l)].length === 1) {
+//     console.log(`${v.l[0]}<-${k}->${v.r[0]}`)
+//   }
+// })
