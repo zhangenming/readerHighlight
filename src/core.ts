@@ -1,14 +1,11 @@
 import { MyRange, createRange, getPositions } from "./utils"
 
-export let allRanges: MyRange[] = []
-
-export function setAllranges(all: MyRange[]) {
-  allRanges = all
-}
-
 export function getScreenPointRangeIdx(query?: string, range?: MyRange) {
   return (
-    allRanges.filter((e) => e.query === query).findIndex((e) => e === range) + 1
+    Object.values(rangeCurrentCache)
+      .flat()
+      .filter((e) => e.query === query)
+      .findIndex((e) => e === range) + 1
   )
 }
 
@@ -19,35 +16,41 @@ export function getScreenPointRange({
   pageX: number
   pageY: number
 }) {
-  return allRanges.find(({ x, y, width, height }) => {
-    const xMatch = x <= pageX && pageX <= x + width
-    const yMatch = y <= pageY && pageY <= y + height
-    return xMatch && yMatch
-  })
+  return Object.values(rangeCurrentCache)
+    .flat()
+    .find(({ x, y, width, height }) => {
+      const xMatch = x <= pageX && pageX <= x + width
+      const yMatch = y <= pageY && pageY <= y + height
+      return xMatch && yMatch
+    })
 }
 
-const range: { [s: string]: MyRange[] } = {}
-const h: { [s: string]: string } = {}
+const rangeCache: { [key: string]: MyRange[] } = {}
+const rangeCurrentCache: { [key: string]: any } = {}
 export function setHighlights(
   query: string,
   txt: string,
   dom: Node,
   currentScroll: number
 ) {
-  const r = addNewSlection().filter(
+  const current = getAll_addNewSlection().filter(
     ({ y }) => y > currentScroll && y < currentScroll + 1800
   )
 
-  const flag = r.map((e) => e.y).join()
-  if (h[query] != flag) {
-    h[query] = flag
-    ;(CSS as any).highlights.set(query, new (globalThis as any).Highlight(...r))
+  if (
+    rangeCurrentCache[query]?.map((e: any) => e.y).join() !=
+    current.map((e) => e.y).join()
+  ) {
+    ;(CSS as any).highlights.set(
+      query,
+      new (globalThis as any).Highlight(...(rangeCurrentCache[query] = current))
+    )
   }
 
-  function addNewSlection() {
+  function getAll_addNewSlection() {
     return (
-      range[query] ||
-      (range[query] = getPositions(txt, query)
+      rangeCache[query] ||
+      (rangeCache[query] = getPositions(txt, query)
         .map((pos) => createRange(dom, pos, query))
         .map((range, idx, ranges) => {
           const firstR = ranges[0]
@@ -70,7 +73,5 @@ export function setHighlights(
           })
         }))
     )
-
-    // allRanges.push(...r)
   }
 }

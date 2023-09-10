@@ -4,14 +4,12 @@ import { useLocalStorage } from "@vueuse/core"
 import { ref, computed, onMounted, watch, nextTick, reactive } from "vue"
 import { MyRange, getPositions } from "./utils"
 import {
-  allRanges,
   getScreenPointRange,
   getScreenPointRangeIdx,
-  setAllranges,
   setHighlights,
 } from "./core"
 
-import _txt from "../txt/有生 (胡学文) (Z-Library) (1).txt?raw"
+import _txt from "../txt/四世同堂：足本：全三册 (老舍) (Z-Library).txt?raw"
 
 // const o = [..._txt].reduce((o, e, i, arr) => {
 //   if (!o[e]) o[e] = { l: [], r: [] }
@@ -79,6 +77,7 @@ document.onclick = (e) => {
     }
 
     allWord.value.add(query)
+    setColor()
 
     const len = getPositions(txt, query).length
     if (len === 1) {
@@ -91,7 +90,7 @@ document.onclick = (e) => {
     function del(query: string) {
       allWord.value.delete(query)
       ;(CSS as any).highlights.set(query, new (globalThis as any).Highlight())
-      setAllranges(allRanges.filter((e) => e.query != query))
+      // setAllranges(allRanges.filter((e) => e.query != query))
     }
   }
 
@@ -207,14 +206,18 @@ document.onscroll = (e) => {
 
   info.value = {} as any
 
-  allWord.value.forEach((query) =>
-    setHighlights(query, txt, dom.value!, globalThis.scrollY)
-  )
+  setColor()
 }
 onMounted(() => {
   scrollHeight = document.body.scrollHeight
   globalThis.scrollTo({ top: scrollY.value, behavior: "smooth" })
 })
+
+function setColor() {
+  allWord.value.forEach((query) =>
+    setHighlights(query, txt, dom.value!, globalThis.scrollY)
+  )
+}
 
 function jumpRange(
   currentR: MyRange,
