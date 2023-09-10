@@ -11,7 +11,42 @@ import {
   setHighlights,
 } from "./core"
 
-import _txt from "../txt/命运.txt?raw"
+import _txt from "../txt/有生 (胡学文) (Z-Library) (1).txt?raw"
+
+// const o = [..._txt].reduce((o, e, i, arr) => {
+//   if (!o[e]) o[e] = { l: [], r: [] }
+
+//   const l = arr[i - 1]
+//   const r = arr[i + 1]
+//   o[e].l.push(l)
+//   o[e].r.push(r)
+//   return o
+// }, {} as { [s: string]: { l: string[]; r: string[] } })
+
+// o.xx
+// const t = Object.entries(o).filter(([k, v]) => v.l.length > 10)
+
+// t.forEach(([k, v]) => {
+//   if ([...new Set(v.r)].length === 1) {
+//     console.log(`${k}->${v.r[0]}`)
+//   }
+// })
+
+// console.log("\n\n\n")
+
+// t.forEach(([k, v]) => {
+//   if ([...new Set(v.l)].length === 1) {
+//     console.log(`${v.l[0]}<-${k}`)
+//   }
+// })
+
+// console.log("\n\n\n")
+
+// t.forEach(([k, v]) => {
+//   if ([...new Set(v.r)].length === 1 && [...new Set(v.l)].length === 1) {
+//     console.log(`${v.l[0]}<-${k}->${v.r[0]}`)
+//   }
+// })
 
 const { searchParams } = new URL(globalThis.location + "")
 const len = searchParams.get("len")
@@ -23,9 +58,6 @@ const dom = ref<Node>()
 
 // vue reactivity...
 const allWord = useLocalStorage("allWord", new Set<string>())
-onMounted(() => {
-  allWord.value.forEach((word) => setHighlights(word, txt, dom.value!))
-})
 
 const hoverWord = ref()
 
@@ -47,7 +79,6 @@ document.onclick = (e) => {
     }
 
     allWord.value.add(query)
-    setHighlights(query, txt, dom.value!)
 
     const len = getPositions(txt, query).length
     if (len === 1) {
@@ -103,8 +134,6 @@ document.onmousemove = (evt) => {
   // 设置hover
   hoverWord.value = word
 
-  // setHighlights(word, "hover")
-
   // const t = +new Date()
   // setTimeout(() => {
   //   document.title = +new Date() - t + ""
@@ -117,8 +146,6 @@ document.onmousemove = (evt) => {
   // })
 }
 
-let autoScrolling = false
-const autoScrollSpeed = useLocalStorage("autoScrollSpeed", 0.05)
 document.onkeydown = (e) => {
   const { key } = e
 
@@ -169,14 +196,20 @@ document.onkeydown = (e) => {
 setInterval(() => {
   autoScrolling &&
     globalThis.scrollBy({ top: autoScrollSpeed.value, behavior: "instant" })
-}, 8)
+})
 
-let scrollHeight: number
-const scrollY = useLocalStorage("scrollY", 0)
+const scrollY = useLocalStorage("scrollY", 0) // 当前滚动条位置
+let scrollHeight: number // 滚动条完整高度
+let autoScrolling = false
+const autoScrollSpeed = useLocalStorage("autoScrollSpeed", 0.05)
 document.onscroll = (e) => {
   scrollY.value = globalThis.scrollY
 
   info.value = {} as any
+
+  allWord.value.forEach((query) =>
+    setHighlights(query, txt, dom.value!, globalThis.scrollY)
+  )
 }
 onMounted(() => {
   scrollHeight = document.body.scrollHeight
@@ -211,6 +244,7 @@ const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
 <template>
   <div
     style="position: fixed; right: 0; background: cornflowerblue; color: white"
+    v-if="0"
   >
     <!-- 进程 -->
     <div>{{ (scrollY / scrollHeight / 0.01).toFixed(2) }}</div>
@@ -225,7 +259,7 @@ const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
     </article>
   </div>
 
-  <div
+  <!-- <div
     v-show="info.current"
     :style="`
       top: ${info.y + 10}px;
@@ -240,7 +274,7 @@ const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
     `"
   >
     {{ info.current }} / {{ info.all }}
-  </div>
+  </div> -->
 
   <component is="style" v-for="word of allWord">
     article::highlight({{ word }}) {{ z }}
@@ -259,17 +293,18 @@ const x = boss ? `{color: #eee;}` : `{ color: #fff;background: red; }`
 
 <style>
 article {
-  scroll-behavior: smooth;
+  font-size: 30px;
+  font-family: cursive;
+  line-height: 1.5em;
   white-space: break-spaces;
   word-spacing: unset;
   word-wrap: break-word;
   word-break: break-all;
   /* text-align: justify; */
-  font-size: 25px;
-  line-height: 1.5em;
   /* font-family: Consolas; */
   /* width: 22em; */
   background: #fff;
   color: black;
+  scroll-behavior: smooth;
 }
 </style>
