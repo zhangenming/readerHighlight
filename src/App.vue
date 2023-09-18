@@ -77,9 +77,9 @@ const info = ref({ current: 0, all: 0, x: 0, y: 0 })
 const 鼠标位置绝对值 = "y"
 document.onmousemove = (evt) => {
   // 关闭滚动
-  openScroll = false
+  // openScroll = false
 
-  const range = getScreenPointRange(evt)
+  const range = getScreenPointRange(evt) // hack for elementFromPoint
   const word = range?.query
 
   // 设置hover idx
@@ -109,21 +109,35 @@ document.onmousemove = (evt) => {
 }
 
 // scroll...
-setInterval(() => {
-  openScroll &&
-    globalThis.scrollBy({ top: speedScroll.value, behavior: "instant" })
-})
+let openScroll = true
+const speedScroll = useLocalStorage("speedScroll", 0.05)
 
 const scrollY = useLocalStorage("scrollY", 0) // 当前滚动条位置
+
+function runScroll() {
+  // globalThis.scrollY.xx
+  globalThis.scrollBy({ top: openScroll ? speedScroll.value : 0 })
+  requestAnimationFrame(runScroll)
+}
+runScroll()
+
+const speedScrollReal = ref(0)
+let scrollY_speedScrollReal = scrollY.value
+setInterval(() => {
+  speedScrollReal.value = scrollY.value - scrollY_speedScrollReal
+  scrollY_speedScrollReal = scrollY.value
+}, 100) // 奇怪  正常情况下速度也会一直变化
+// 开发工具, 生产环境, 鼠标移入界面 都会对滚动性能产生影响
+// 考虑使用 原生虚拟列表
+
 let scrollHeight: number // 滚动条完整高度
-let openScroll = false
-const speedScroll = useLocalStorage("speedScroll", 0.05)
-document.onscroll = (e) => {
+document.onscroll = () => {
+  // globalThis.scrollY.xx
   scrollY.value = globalThis.scrollY
 
   info.value = {} as any
 
-  setColor()
+  speedScroll.value < 1 && setColor()
 }
 onMounted(() => {
   scrollHeight = document.body.scrollHeight
@@ -158,19 +172,21 @@ document.onkeydown = (e) => {
 
   // 减速
   if (key === "ArrowLeft") {
-    speedScroll.value *= 0.001
-    setTimeout(() => {
-      speedScroll.value *= 1000 * 0.9
-    }, 1000 * 30)
+    speedScroll.value *= 0.8
+    // speedScroll.value *= 0.001
+    // setTimeout(() => {
+    //   speedScroll.value *= 1000 * 0.9
+    // }, 1000 * 30)
   }
 
   // 加速
   if (key === "ArrowRight") {
-    const S = 20
-    speedScroll.value *= S
-    setTimeout(() => {
-      speedScroll.value *= 1.1 / S // 抵消上面的10, 最终是原来的110%
-    }, 1000 * 1)
+    speedScroll.value *= 1.2
+    // const S = 20
+    // speedScroll.value *= S
+    // setTimeout(() => {
+    //   speedScroll.value *= 1.1 / S // 抵消上面的10, 最终是原来的110%
+    // }, 1000 * 2)
   }
 
   function Backspace(behavior: "smooth" | "instant") {
@@ -189,13 +205,13 @@ const hoverWordStyle = `{ color: #fff;background: red;}`
 <template>
   <div
     style="position: fixed; right: 0; background: cornflowerblue; color: white"
-    v-if="0"
   >
     <!-- 进程 -->
-    <div>{{ (scrollY / scrollHeight / 0.01).toFixed(2) }}</div>
+    <div>{{ (scrollY / scrollHeight / 0.01).toFixed(2) }} %</div>
 
     <!-- 速度 -->
-    <div v-show="openScroll">{{ (speedScroll * 20).toFixed(2) }}</div>
+    <div v-show="openScroll">{{ (speedScroll * 20).toFixed(2) }} px/s</div>
+    <div>{{ speedScrollReal.toFixed(3) }}</div>
   </div>
 
   <div>
@@ -260,5 +276,9 @@ article {
   background: #fff;
   color: black;
   scroll-behavior: smooth;
+  /* user-select: none; */
+}
+:root::target-text {
+  color: red;
 }
 </style>
