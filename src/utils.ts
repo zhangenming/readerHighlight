@@ -1,13 +1,18 @@
-export function createRange(dom: Node, start: number, query: string) {
+export function createRange(start: number, query: string) {
   const range = new Range() as MyRange
-  const d = dom.childNodes[0]
-  range.setStart(d, start)
-  range.setEnd(d, start + query.length)
+  const text = (window as any).dom.childNodes[0] // ? 要不要缓存
+  range.setStart(text, start)
+  range.setEnd(text, start + query.length)
   return range
 }
 
+let txt: string // 省略以后每次都要传参, 因为setup没办法export 所以这里只好使用这种方式
+export function setTxt(_txt: string) {
+  txt = _txt
+}
+
 const getPositionsCache: { [s: string]: number[] } = {}
-export function getPositions(txt: string, query?: string) {
+export function getPositions(query?: string) {
   if (!query) return []
 
   if (getPositionsCache[query]) return getPositionsCache[query]

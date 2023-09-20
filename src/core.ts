@@ -27,12 +27,7 @@ export function getScreenPointRange({
 
 const rangeCache: { [key: string]: MyRange[] } = {}
 const rangeCurrentCache: { [key: string]: any } = {}
-export function setHighlights(
-  query: string,
-  txt: string,
-  dom: Node,
-  currentScroll: number
-) {
+export function setHighlights(query: string, currentScroll: number) {
   const current = getAll_addNewSlection().filter(
     ({ y }) => y > currentScroll && y < currentScroll + 1800
   )
@@ -50,8 +45,8 @@ export function setHighlights(
   function getAll_addNewSlection() {
     return (
       rangeCache[query] ||
-      (rangeCache[query] = getPositions(txt, query)
-        .map((pos) => createRange(dom, pos, query))
+      (rangeCache[query] = getPositions(query)
+        .map((pos) => createRange(pos, query))
         .map((range, idx, ranges) => {
           const firstR = ranges[0]
           const lastR = ranges[ranges.length - 1]
