@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+    <div>按ADSL啊山莨菪碱阿是溜达鸡阿萨漏打卡来扩大</div>
+  </body>
+</html>
+<style>
+  body {
+    height: 10000vh;
+  }
+  div {
+    height: 20px;
+    margin-top: 80vh;
+    font-size: 20px;
+  }
+</style>
+<script>
+  let t,
+    max = 0,
+    min = 50
+  function runScroll() {
+    const diff = (performance.now() - t).toFixed(0)
+    // max = max > diff ? max : diff
+    // min = min < diff && diff != 0 ? min : diff
+    // console.log(diff, max, min,)
+    // console.log(window.scrollY)
+    t = performance.now()
+    globalThis.scrollBy({ top: 0.1 })
+    // requestAnimationFrame(runScroll)
+    requestAnimationFrame(runScroll)
+  }
+  scrollTo(100, 100)
+  runScroll()
+
+  let p = performance.now(),
+    i = 0
+  window.scroll = () => {
+    i++
+    console.log((performance.now() - p) / i)
+    // console.log(scrollY)
+  }
+</script>

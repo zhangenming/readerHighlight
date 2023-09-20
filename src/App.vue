@@ -1,155 +1,174 @@
 <!-- 应用逻辑 vue逻辑分离 -->
 <script setup lang="ts">
 import { useLocalStorage } from "@vueuse/core"
-import { ref, computed, onMounted, watch, nextTick, reactive } from "vue"
-import { MyRange, getPositions } from "./utils"
+import {
+  ref,
+  computed,
+  onMounted,
+  watch,
+  nextTick,
+  reactive,
+  Ref,
+  onUpdated,
+} from "vue"
+import {
+  MyRange,
+  getPositions,
+  getScrollPosition,
+  setScrollPosition,
+  setTxt,
+} from "./utils"
 import {
   getScreenPointRange,
   getScreenPointRangeIdx,
-  setHighlights,
+  addHighlights,
+  highlightsSet,
 } from "./core"
 import { jumpRange } from "./reader"
 
-import _txt from "../txt/四世同堂：足本：全三册 (老舍) (Z-Library).txt?raw"
+const { document } = window
 
-const txt = _txt.replaceAll("\n\n\n", "\n\n")
+const txt = "天道"
+const text = ref("init")
 
-const selection = getSelection()
-const dom = ref<Node>()
+// window.onload = function () {
+//   history.scrollRestoration = "manual"
+// }
 
-// vue reactivity...
-const allWord = useLocalStorage("allWord", new Set<string>())
+import(`../txt/${txt}.txt?raw`).then((res) => {
+  const data = res.default.replaceAll("\n\n\n", "\n\n")
 
-const hoverWord = ref()
+  setTxt((text.value = data)) // 更新 text
 
+  nextTick(() => {
+    // getScrollPosition().xx
+    // scrollYLocal.value.xx
+
+    setScrollPosition(scrollYLocal.value)
+    ;(window as any).textDom = document.getElementById("dom")!.childNodes[0]
+
+    // getScrollPosition().xx
+    // scrollYLocal.value.xx
+  })
+})
+
+// vue reactivity... / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
 const jumpTargetRange = ref<MyRange>()
 
-// event
+// mousescroll event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
+let 是否自动滚动 = false
+const 滚动速度 = useLocalStorage("speedScroll", 0.05)
+requestAnimationFrame(function runScroll() {
+  requestAnimationFrame(runScroll)
+
+  是否自动滚动 && setScrollPosition(getScrollPosition() + 滚动速度.value)
+})
+
+//
+// 奇怪  正常情况下速度也会一直变化
+// 开发工具, 生产环境, 鼠标移入界面 都会对滚动性能产生影响
+// 计算真实滚动速度
+const 计算出的真实滚动速度 = ref(0)
+;(() => {
+  let tmpPosition = getScrollPosition()
+  setInterval(() => {
+    计算出的真实滚动速度.value = getScrollPosition() - tmpPosition
+    tmpPosition = getScrollPosition()
+  }, 100)
+})()
+
+//
+const scrollYLocal = useLocalStorage("scrollYLocal", 0) // 当前滚动条位置
+document.onscroll = () => {
+  // getScrollPosition().xx
+  // "onscroll".xx
+
+  scrollYLocal.value = getScrollPosition()
+
+  滚动速度.value < 1 && allWord.value.forEach(addHighlights)
+
+  info.value = {} as any
+}
+
+// mouseclick event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
 let clientYLocal = 0
 let 跳转之前的位置: number
+const allWord = useLocalStorage("allWord", new Set<string>())
 document.onclick = (e) => {
-  const query = selection + ""
-  selection?.empty()
+  const query = getSelection() + ""
+  getSelection()!.empty()
 
   if (query) {
+    // range添加删除
     if (query === "" || query.includes("\n")) return
 
     if (allWord.value.has(query)) {
       del(query)
-      return
+    } else {
+      allWord.value.add(query)
+      addHighlights(query)
+
+      const len = getPositions(query).length
+      if (len === 1) setTimeout(() => del(query), 200)
+      document.title = len + ""
     }
-
-    allWord.value.add(query)
-    setColor()
-
-    const len = getPositions(txt, query).length
-    if (len === 1) {
-      setTimeout(() => del(query), 200)
-    }
-
-    document.title = len + ""
-    return
 
     function del(query: string) {
       allWord.value.delete(query)
-      ;(CSS as any).highlights.set(query, new (globalThis as any).Highlight())
-      // setAllranges(allRanges.filter((e) => e.query != query))
+      highlightsSet(query)
     }
+  } else {
+    // range跳转
+    clientYLocal = e.clientY
+    const target = getScreenPointRange(e)
+
+    if (!target) return
+
+    跳转之前的位置 = getScrollPosition()
+    jumpRange(target, e, jumpTargetRange, clientYLocal)
   }
-
-  clientYLocal = e.clientY
-  const r = getScreenPointRange(e)
-
-  if (!r) return
-
-  跳转之前的位置 = globalThis.scrollY
-  jumpRange(r, e, jumpTargetRange, clientYLocal)
 }
 
-// 文本量多少 渲染量多少(本word/全word) 是否第一次
-//  1   2   4   8
-//  50  200 800 1600
-//  16  50  200
-
-let _word: string | undefined
-
+// mousemove event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
 const info = ref({ current: 0, all: 0, x: 0, y: 0 })
-const 鼠标位置绝对值 = "y"
-document.onmousemove = (evt) => {
-  // 关闭滚动
-  // openScroll = false
+const hoverWord = ref()
+document.onmousemove = (() => {
+  let _word: string | undefined
 
-  const range = getScreenPointRange(evt) // hack for elementFromPoint
-  const word = range?.query
+  return (evt) => {
+    是否自动滚动 = false
 
-  // 设置hover idx
-  info.value = {
-    all: getPositions(txt, word).length,
-    current: getScreenPointRangeIdx(word, range),
-    x: evt.x,
-    y: evt[鼠标位置绝对值],
+    const range = getScreenPointRange(evt) // hack for elementFromPoint
+    const word = range?.query
+
+    // 设置hover idx
+    info.value = {
+      all: getPositions(word).length,
+      current: getScreenPointRangeIdx(word, range),
+      x: evt.x,
+      y: evt.y, //鼠标位置绝对值
+    }
+
+    if (_word === word) return
+    _word = word
+
+    // 设置hover
+    hoverWord.value = word
+
+    // const t = +new Date()
+    // setTimeout(() => {
+    //   document.title = +new Date() - t + ""
+    // })
+    // nextTick(() => {
+    //   document.title = +new Date() - t
+    // })
+    // requestIdleCallback(() => {
+    //   document.title = +new Date() - t
+    // })
   }
+})()
 
-  if (_word === word) return
-  _word = word
-
-  // 设置hover
-  hoverWord.value = word
-
-  // const t = +new Date()
-  // setTimeout(() => {
-  //   document.title = +new Date() - t + ""
-  // })
-  // nextTick(() => {
-  //   document.title = +new Date() - t
-  // })
-  // requestIdleCallback(() => {
-  //   document.title = +new Date() - t
-  // })
-}
-
-// scroll...
-let openScroll = true
-const speedScroll = useLocalStorage("speedScroll", 0.05)
-
-const scrollY = useLocalStorage("scrollY", 0) // 当前滚动条位置
-
-function runScroll() {
-  // globalThis.scrollY.xx
-  globalThis.scrollBy({ top: openScroll ? speedScroll.value : 0 })
-  requestAnimationFrame(runScroll)
-}
-runScroll()
-
-const speedScrollReal = ref(0)
-let scrollY_speedScrollReal = scrollY.value
-setInterval(() => {
-  speedScrollReal.value = scrollY.value - scrollY_speedScrollReal
-  scrollY_speedScrollReal = scrollY.value
-}, 100) // 奇怪  正常情况下速度也会一直变化
-// 开发工具, 生产环境, 鼠标移入界面 都会对滚动性能产生影响
-// 考虑使用 原生虚拟列表
-
-let scrollHeight: number // 滚动条完整高度
-document.onscroll = () => {
-  // globalThis.scrollY.xx
-  scrollY.value = globalThis.scrollY
-
-  info.value = {} as any
-
-  speedScroll.value < 1 && setColor()
-}
-onMounted(() => {
-  scrollHeight = document.body.scrollHeight
-  globalThis.scrollTo({ top: scrollY.value, behavior: "smooth" })
-})
-
-function setColor() {
-  allWord.value.forEach((query) =>
-    setHighlights(query, txt, dom.value!, globalThis.scrollY)
-  )
-}
-
+// key event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
 document.onkeydown = (e) => {
   const { key } = e
 
@@ -162,17 +181,16 @@ document.onkeydown = (e) => {
     Backspace("smooth")
   }
 
-  // 开启/关闭
   if (key === "Enter") {
-    // if (跳转之前的位置 && !openScroll) {
+    // if (跳转之前的位置 && !openAutoScroll) {
     //   Backspace("instant")
     // }
-    openScroll = !openScroll
+    是否自动滚动 = true
   }
 
   // 减速
   if (key === "ArrowLeft") {
-    speedScroll.value *= 0.8
+    滚动速度.value *= 0.8
     // speedScroll.value *= 0.001
     // setTimeout(() => {
     //   speedScroll.value *= 1000 * 0.9
@@ -181,7 +199,7 @@ document.onkeydown = (e) => {
 
   // 加速
   if (key === "ArrowRight") {
-    speedScroll.value *= 1.2
+    滚动速度.value *= 1.2
     // const S = 20
     // speedScroll.value *= S
     // setTimeout(() => {
@@ -190,15 +208,13 @@ document.onkeydown = (e) => {
   }
 
   function Backspace(behavior: "smooth" | "instant") {
-    globalThis.scrollTo({
-      behavior,
-      top: 跳转之前的位置,
-    })
+    setScrollPosition(跳转之前的位置, behavior)
+
     跳转之前的位置 = 0
   }
 }
 
-const wordStyle = `{ color: red;background: #fff; }` // not work
+const wordStyle = `{ color: red;background: #fff; }`
 const hoverWordStyle = `{ color: #fff;background: red;}`
 </script>
 
@@ -207,16 +223,18 @@ const hoverWordStyle = `{ color: #fff;background: red;}`
     style="position: fixed; right: 0; background: cornflowerblue; color: white"
   >
     <!-- 进程 -->
-    <div>{{ (scrollY / scrollHeight / 0.01).toFixed(2) }} %</div>
+    <div>
+      {{ (scrollYLocal / document.body.scrollHeight / 0.01).toFixed(2) }} %
+    </div>
 
     <!-- 速度 -->
-    <div v-show="openScroll">{{ (speedScroll * 20).toFixed(2) }} px/s</div>
-    <div>{{ speedScrollReal.toFixed(3) }}</div>
+    <div v-show="是否自动滚动">{{ (滚动速度 * 20).toFixed(2) }} px/s</div>
+    <div>{{ 计算出的真实滚动速度.toFixed(3) }}</div>
   </div>
 
   <div>
-    <article ref="dom">
-      {{ txt }}
+    <article id="dom">
+      {{ text }}
     </article>
   </div>
 
@@ -277,8 +295,9 @@ article {
   color: black;
   scroll-behavior: smooth;
   /* user-select: none; */
+  color: #eee;
 }
-:root::target-text {
+/* :root::target-text {
   color: red;
-}
+} */
 </style>

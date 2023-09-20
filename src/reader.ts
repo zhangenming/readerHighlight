@@ -1,5 +1,5 @@
 import { Ref } from "vue"
-import { MyRange } from "./utils"
+import { MyRange, setScrollPosition } from "./utils"
 
 export function jumpRange(
   currentR: MyRange,
@@ -17,8 +17,5 @@ export function jumpRange(
 
   jumpTargetRange.value = currentR[type]
 
-  globalThis.scrollTo({
-    behavior: "smooth",
-    top: jumpTargetRange.value.y - clientYLocal, // + (scrollY % 26),
-  })
+  setScrollPosition(jumpTargetRange.value.y - clientYLocal, "smooth")
 }

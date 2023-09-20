@@ -1,25 +1,10 @@
-export function createRange(start: number, query: string) {
-  const range = new Range() as MyRange
-  const text = (window as any).dom.childNodes[0] // ? 要不要缓存
-  range.setStart(text, start)
-  range.setEnd(text, start + query.length)
-  return range
-}
-
 let txt: string // 省略以后每次都要传参, 因为setup没办法export 所以这里只好使用这种方式
 export function setTxt(_txt: string) {
   txt = _txt
 }
 
-const getPositionsCache: { [s: string]: number[] } = {}
-export function getPositions(query?: string) {
-  if (!query) return []
-
-  if (getPositionsCache[query]) return getPositionsCache[query]
-
-  if (query === "") {
-    return []
-  }
+export const getPositions = function getPositions(query?: string) {
+  if (!query || query === "") return []
 
   const targets = []
   let index = txt.indexOf(query)
@@ -27,7 +12,20 @@ export function getPositions(query?: string) {
     targets.push(index)
     index = txt.indexOf(query, index + 1)
   }
-  return (getPositionsCache[query] = targets)
+  return targets
+}
+
+function withCache<T extends (...args: any[]) => any>(
+  fn: T,
+  getFlag = (...args: any[]) => args[0]
+): (...args: Parameters<T>) => ReturnType<T> {
+  const cache: { [key: string]: any } = {}
+
+  return (...args: Parameters<T>): ReturnType<T> => {
+    const flag = getFlag()
+
+    return cache[flag] || (cache[flag] = fn(...args))
+  }
 }
 
 export type MyRange = Range & {
@@ -78,3 +76,10 @@ export type MyRange = Range & {
 //     console.log(`${v.l[0]}<-${k}->${v.r[0]}`)
 //   }
 // })
+
+export function getScrollPosition() {
+  return window.scrollY
+}
+export function setScrollPosition(top: number, behavior?: ScrollBehavior) {
+  window.scrollTo({ top, behavior })
+}
