@@ -1,11 +1,13 @@
 import { Ref } from "vue"
 import { MyRange, setScrollPosition } from "./utils"
+import { AllWord, withRelation } from "./core"
 
 export function jumpRange(
   currentR: MyRange,
   { ctrlKey, shiftKey }: KeyboardEvent | MouseEvent,
   jumpTargetRange: Ref<MyRange | undefined>,
-  clientYLocal: number
+  clientYLocal: number,
+  allWordValue: AllWord
 ) {
   const type = ctrlKey
     ? shiftKey
@@ -15,7 +17,7 @@ export function jumpRange(
     ? "preR"
     : "nextR"
 
-  jumpTargetRange.value = currentR[type]
+  jumpTargetRange.value = withRelation(currentR[type], allWordValue)
 
   setScrollPosition(jumpTargetRange.value.y - clientYLocal, "smooth")
 }

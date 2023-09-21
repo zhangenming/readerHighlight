@@ -29,6 +29,9 @@ function withCache<T extends (...args: any[]) => any>(
 }
 
 export type MyRange = Range & {
+  start: number
+  end: number
+
   x: number
   y: number
   width: number

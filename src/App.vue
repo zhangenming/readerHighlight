@@ -21,8 +21,9 @@ import {
 import {
   getScreenPointRange,
   getScreenPointRangeIdx,
-  addHighlights,
-  highlightsSet,
+  setQueryHighlights,
+  geneNewQueryRange,
+  AllWord,
 } from "./core"
 import { jumpRange } from "./reader"
 
@@ -53,6 +54,8 @@ import(`../txt/${txt}.txt?raw`).then((res) => {
 })
 
 // vue reactivity... / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
+const allWord = useLocalStorage("allWord", {} as AllWord)
+
 const jumpTargetRange = ref<MyRange>()
 
 // mousescroll event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
@@ -85,7 +88,10 @@ document.onscroll = () => {
 
   scrollYLocal.value = getScrollPosition()
 
-  滚动速度.value < 1 && allWord.value.forEach(addHighlights)
+  滚动速度.value < 1 &&
+    Object.keys(allWord.value).forEach((query) =>
+      setQueryHighlights(query, allWord)
+    )
 
   info.value = {} as any
 }
@@ -93,7 +99,6 @@ document.onscroll = () => {
 // mouseclick event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
 let clientYLocal = 0
 let 跳转之前的位置: number
-const allWord = useLocalStorage("allWord", new Set<string>())
 document.onclick = (e) => {
   const query = getSelection() + ""
   getSelection()!.empty()
@@ -102,30 +107,33 @@ document.onclick = (e) => {
     // range添加删除
     if (query === "" || query.includes("\n")) return
 
-    if (allWord.value.has(query)) {
+    if (allWord.value[query]) {
       del(query)
     } else {
-      allWord.value.add(query)
-      addHighlights(query)
+      allWord.value[query] = {
+        show: true,
+        v: geneNewQueryRange(query),
+      }
 
       const len = getPositions(query).length
       if (len === 1) setTimeout(() => del(query), 200)
       document.title = len + ""
     }
 
+    setQueryHighlights(query, allWord)
+
     function del(query: string) {
-      allWord.value.delete(query)
-      highlightsSet(query)
+      allWord.value[query].show = !allWord.value[query].show
     }
   } else {
     // range跳转
     clientYLocal = e.clientY
-    const target = getScreenPointRange(e)
+    const target = getScreenPointRange(e, allWord.value)
 
     if (!target) return
 
     跳转之前的位置 = getScrollPosition()
-    jumpRange(target, e, jumpTargetRange, clientYLocal)
+    jumpRange(target, e, jumpTargetRange, clientYLocal, allWord.value)
   }
 }
 
@@ -138,13 +146,13 @@ document.onmousemove = (() => {
   return (evt) => {
     是否自动滚动 = false
 
-    const range = getScreenPointRange(evt) // hack for elementFromPoint
+    const range = getScreenPointRange(evt, allWord.value) // hack for elementFromPoint
     const word = range?.query
 
     // 设置hover idx
     info.value = {
       all: getPositions(word).length,
-      current: getScreenPointRangeIdx(word, range),
+      current: 1, //getScreenPointRangeIdx(word, range),
       x: evt.x,
       y: evt.y, //鼠标位置绝对值
     }
@@ -174,7 +182,13 @@ document.onkeydown = (e) => {
 
   if (key === "Alt") {
     e.preventDefault()
-    jumpRange(jumpTargetRange.value!, e, jumpTargetRange, clientYLocal)
+    jumpRange(
+      jumpTargetRange.value!,
+      e,
+      jumpTargetRange,
+      clientYLocal,
+      allWord.value
+    )
   }
 
   if (key === "Backspace") {
@@ -255,7 +269,7 @@ const hoverWordStyle = `{ color: #fff;background: red;}`
     {{ info.current }} / {{ info.all }}
   </div> -->
 
-  <component is="style" v-for="word of allWord">
+  <component is="style" v-for="word of Object.keys(allWord)">
     <!-- {{
       word === hoverWord
         ? `article::highlight(${word})${hoverWordStyle}`
@@ -295,7 +309,8 @@ article {
   color: black;
   scroll-behavior: smooth;
   /* user-select: none; */
-  color: #eee;
+
+  /* color: #eee; */
 }
 /* :root::target-text {
   color: red;
