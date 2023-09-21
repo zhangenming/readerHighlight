@@ -17,6 +17,7 @@ export function getScreenPointRangeIdx(
 
 function getAll(allWordValue: AllWord) {
   return Object.values(allWordValue)
+    .filter((e) => e.show)
     .map((e) => e.v)
     .flat()
 }
