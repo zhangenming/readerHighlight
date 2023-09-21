@@ -115,15 +115,23 @@ document.onclick = (e) => {
         v: geneNewQueryRange(query),
       }
 
-      const len = getPositions(query).length
-      if (len === 1) setTimeout(() => del(query), 200)
-      document.title = len + ""
+      setQueryHighlights(query, allWord)
     }
 
-    setQueryHighlights(query, allWord)
+    if (allWord.value[query].show) {
+      const len = getPositions(query).length
+      document.title = len + ""
+
+      if (len === 1) {
+        setTimeout(() => {
+          del(query)
+        }, 400)
+      }
+    }
 
     function del(query: string) {
       allWord.value[query].show = !allWord.value[query].show
+      setQueryHighlights(query, allWord)
     }
   } else {
     // range跳转
