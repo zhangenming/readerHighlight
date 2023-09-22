@@ -19,8 +19,8 @@ import {
   setTxt,
 } from "./utils"
 import {
-  getScreenPointRange,
-  getScreenPointRangeIdx,
+  getRangeFromPoint,
+  getRangeFromPointIdx,
   setQueryHighlights,
   geneNewQueryRange,
   AllWord,
@@ -90,7 +90,7 @@ document.onscroll = () => {
 
   滚动速度.value < 1 &&
     Object.keys(allWord.value).forEach((query) =>
-      setQueryHighlights(query, allWord)
+      setQueryHighlights(allWord, query)
     )
 
   info.value = {} as any
@@ -115,7 +115,7 @@ document.onclick = (e) => {
         v: geneNewQueryRange(query),
       }
 
-      setQueryHighlights(query, allWord)
+      setQueryHighlights(allWord, query)
     }
 
     if (allWord.value[query].show) {
@@ -131,13 +131,13 @@ document.onclick = (e) => {
 
     function del(query: string) {
       allWord.value[query].show = !allWord.value[query].show
-      setQueryHighlights(query, allWord)
+      setQueryHighlights(allWord, query)
     }
   } else {
     // range跳转
     clientYLocal = e.clientY
-    const target = getScreenPointRange(e, allWord.value)
 
+    const target = getRangeFromPoint(e, allWord.value)
     if (!target) return
 
     跳转之前的位置 = getScrollPosition()
@@ -147,29 +147,29 @@ document.onclick = (e) => {
 
 // mousemove event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
 const info = ref({ current: 0, all: 0, x: 0, y: 0 })
-const hoverWord = ref()
+const hoverQuery = ref()
 document.onmousemove = (() => {
-  let _word: string | undefined
+  // let _word: string | undefined
 
   return (evt) => {
     是否自动滚动 = false
 
-    const range = getScreenPointRange(evt, allWord.value) // hack for elementFromPoint
-    const word = range?.query
+    const target = getRangeFromPoint(evt, allWord.value) // hack for elementFromPoint
+    if (!target) return
+
+    const { query } = target
+    hoverQuery.value = query
 
     // 设置hover idx
     info.value = {
-      all: getPositions(word).length,
-      current: 1, //getScreenPointRangeIdx(word, range),
+      all: getPositions(query).length,
+      current: 1, //getScreenPointRangeIdx(word, target),
       x: evt.x,
       y: evt.y, //鼠标位置绝对值
     }
 
-    if (_word === word) return
-    _word = word
-
-    // 设置hover
-    hoverWord.value = word
+    // if (_word === query) return
+    // _word = query
 
     // const t = +new Date()
     // setTimeout(() => {
@@ -279,14 +279,14 @@ const hoverWordStyle = `{ color: #fff;background: red;}`
 
   <component is="style" v-for="word of Object.keys(allWord)">
     <!-- {{
-      word === hoverWord
+      word === hoverQuery
         ? `article::highlight(${word})${hoverWordStyle}`
         : `article::highlight(${word})${wordStyle}`
     }}
 
     article::highlight({{ word }})
     {{
-      word === hoverWord
+      word === hoverQuery
         ? hoverWordStyle
         : wordStyle
     }} -->
@@ -295,7 +295,7 @@ const hoverWordStyle = `{ color: #fff;background: red;}`
   </component>
 
   <component is="style">
-    article::highlight({{ hoverWord }}){{ hoverWordStyle }}
+    article::highlight({{ hoverQuery }}){{ hoverWordStyle }}
   </component>
   <!-- article::highlight({{ word }}):hover {{ hoverWordStyle }} -->
   <!-- 可惜不支持:hover和事件机制 需要使用JS模拟 -->
@@ -318,7 +318,7 @@ article {
   scroll-behavior: smooth;
   /* user-select: none; */
 
-  /* color: #eee; */
+  color: #eee;
 }
 /* :root::target-text {
   color: red;

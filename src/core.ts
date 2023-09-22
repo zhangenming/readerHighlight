@@ -3,7 +3,7 @@ import { MyRange, getPositions, getScrollPosition } from "./utils"
 
 export type AllWord = { [key: string]: { show: boolean; v: MyRange[] } }
 
-export function getScreenPointRangeIdx(
+export function getRangeFromPointIdx(
   query: string,
   range: MyRange,
   allWordValue: AllWord
@@ -18,26 +18,20 @@ export function getScreenPointRangeIdx(
 function getAll(allWordValue: AllWord) {
   return Object.values(allWordValue)
     .filter((e) => e.show)
-    .map((e) => e.v)
-    .flat()
+    .flatMap((e) => e.v)
 }
 
-export function getScreenPointRange(
-  { pageX, pageY }: { pageX: number; pageY: number },
-  allWordValue: AllWord
-) {
-  const target = getAll(allWordValue).find(({ x, y, width, height }) => {
-    const xMatch = x <= pageX && pageX <= x + width
-    const yMatch = y <= pageY && pageY <= y + height
-    return xMatch && yMatch
-  })
+export function getRangeFromPoint({ x, y }: MouseEvent, allWordValue: AllWord) {
+  const { startOffset: idx } = document.caretRangeFromPoint(x, y)!
+
+  const target = getAll(allWordValue).find((e) => e.start < idx && e.end > idx)
 
   if (!target) return
 
-  return withRelation(target, allWordValue)
+  return withFourJumpInfo(target, allWordValue)
 }
 
-export function withRelation(range: MyRange, allWordValue: AllWord) {
+export function withFourJumpInfo(range: MyRange, allWordValue: AllWord) {
   const ranges = allWordValue[range.query].v
 
   const idx = ranges.findIndex((e) => e === range)
@@ -61,8 +55,8 @@ function highlightsSet(query: string, ranges: MyRange[] = []) {
 }
 
 export function setQueryHighlights(
-  query: string,
-  allWord: RemovableRef<{ [key: string]: { show: boolean; v: MyRange[] } }>
+  allWord: RemovableRef<{ [key: string]: { show: boolean; v: MyRange[] } }>,
+  query: string
 ) {
   const { show, v } = allWord.value[query]
 
@@ -76,34 +70,25 @@ export function setQueryHighlights(
 
 export function geneNewQueryRange(query: string) {
   return getPositions(query)
-    .map((start) => createRange(start, start + query.length))
-    .map((range, idx, ranges) => {
-      const firstR = ranges[0]
-      const lastR = ranges.at(-1)
-
-      const { x, y, width, height } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom, 这个信息是为了click的时候XY2Range用, 现在暂时用不到
+    .map((start) => createRange(start, start + query.length)) // 这个是不是不需要 使用的时候再create
+    .map((range) => {
+      const { x, y } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom, 这个信息是为了click的时候XY2Range用, 现在暂时用不到
 
       return Object.assign(range, {
-        start: range.startOffset,
+        start: range.startOffset, // 序列号的时候会丢失
         end: range.endOffset,
 
         query,
 
-        // firstR,
-        // lastR,
-        // preR: ranges[idx - 1] || lastR,
-        // nextR: ranges[idx + 1] || firstR,
-
         x,
         y: y + getScrollPosition(), // 相对0的绝对距离
-        width,
-        height,
       }) as MyRange
     })
 }
 
 function createRange(start: number, end: number) {
   const { textDom } = window as any
+
   const range = new Range()
   range.setStart(textDom, start)
   range.setEnd(textDom, end)

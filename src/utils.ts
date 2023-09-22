@@ -34,8 +34,6 @@ export type MyRange = Range & {
 
   x: number
   y: number
-  width: number
-  height: number
 
   firstR: MyRange
   lastR: MyRange

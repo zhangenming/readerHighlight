@@ -1,6 +1,6 @@
 import { Ref } from "vue"
 import { MyRange, setScrollPosition } from "./utils"
-import { AllWord, withRelation } from "./core"
+import { AllWord, withFourJumpInfo } from "./core"
 
 export function jumpRange(
   currentR: MyRange,
@@ -17,7 +17,7 @@ export function jumpRange(
     ? "preR"
     : "nextR"
 
-  jumpTargetRange.value = withRelation(currentR[type], allWordValue)
+  jumpTargetRange.value = withFourJumpInfo(currentR[type], allWordValue)
 
   setScrollPosition(jumpTargetRange.value.y - clientYLocal, "smooth")
 }
