@@ -19,11 +19,11 @@ import {
   setTxt,
 } from "./utils"
 import {
+  AllWord,
   getRangeFromPoint,
   getRangeFromPointIdx,
   setQueryHighlights,
   geneNewQueryRange,
-  AllWord,
 } from "./core"
 import { jumpRange } from "./reader"
 
@@ -156,7 +156,6 @@ document.onmousemove = (() => {
 
     const target = getRangeFromPoint(evt, allWord.value) // hack for elementFromPoint
     if (!target) return
-
     const { query } = target
     hoverQuery.value = query
 
@@ -318,7 +317,7 @@ article {
   scroll-behavior: smooth;
   /* user-select: none; */
 
-  color: #eee;
+  /* color: #eee; */
 }
 /* :root::target-text {
   color: red;

@@ -23,8 +23,9 @@ function getAll(allWordValue: AllWord) {
 
 export function getRangeFromPoint({ x, y }: MouseEvent, allWordValue: AllWord) {
   const { startOffset: idx } = document.caretRangeFromPoint(x, y)!
-
-  const target = getAll(allWordValue).find((e) => e.start < idx && e.end > idx)
+  const target = getAll(allWordValue).find(
+    (e) => e.start <= idx && e.end >= idx
+  )
 
   if (!target) return
 
@@ -38,13 +39,15 @@ export function withFourJumpInfo(range: MyRange, allWordValue: AllWord) {
 
   const firstR = ranges[0]
   const lastR = ranges.at(-1)
+  const preR = ranges.slice(0, idx).findLast((e) => e.y != range.y) || lastR
+  const nextR = ranges.slice(idx + 1).find((e) => e.y != range.y) || firstR
 
   return {
     ...range,
     firstR,
     lastR,
-    preR: ranges[idx - 1] || lastR,
-    nextR: ranges[idx + 1] || firstR,
+    preR,
+    nextR,
   } as MyRange
 }
 
