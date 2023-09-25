@@ -22,7 +22,10 @@ function getAll(allWordValue: AllWord) {
 }
 
 export function getRangeFromPoint({ x, y }: MouseEvent, allWordValue: AllWord) {
-  const { startOffset: idx } = document.caretRangeFromPoint(x, y)!
+  const curentRange = document.caretRangeFromPoint(x, y)
+  if (!curentRange) return
+
+  const idx = curentRange.startOffset
   const target = getAll(allWordValue).find(
     (e) => e.start <= idx && e.end >= idx
   )

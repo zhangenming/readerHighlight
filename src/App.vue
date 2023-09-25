@@ -1,4 +1,5 @@
 <!-- 应用逻辑 vue逻辑分离 -->
+<!-- 刷新的时候 页面会滚动一小短距离 -->
 <script setup lang="ts">
 import { useLocalStorage } from "@vueuse/core"
 import {
@@ -45,8 +46,13 @@ import(`../txt/${txt}.txt?raw`).then((res) => {
     // getScrollPosition().xx
     // scrollYLocal.value.xx
 
-    setScrollPosition(scrollYLocal.value)
     ;(window as any).textDom = document.getElementById("dom")!.childNodes[0]
+
+    setScrollPosition(scrollYLocal.value)
+
+    // Object.keys(allWord.value).forEach((query) =>
+    //   setQueryHighlights(allWord, query)
+    // ) // workaround
 
     // getScrollPosition().xx
     // scrollYLocal.value.xx
