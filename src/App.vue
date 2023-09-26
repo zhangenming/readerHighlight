@@ -158,10 +158,13 @@ document.onmousemove = (() => {
   // let _word: string | undefined
 
   return (evt) => {
+    if (Math.abs(evt.movementX) < 2) return // 可能是鼠标不小心偏移
+
     是否自动滚动 = false
 
     const target = getRangeFromPoint(evt, allWord.value) // hack for elementFromPoint
     if (!target) return
+
     const { query } = target
     hoverQuery.value = query
 
@@ -308,6 +311,7 @@ const hoverWordStyle = `{ color: #fff;background: red;}`
 
 <style>
 article {
+  padding: 0 5px;
   font-size: 30px;
   font-family: cursive;
   line-height: 1.5em;
@@ -323,7 +327,7 @@ article {
   scroll-behavior: smooth;
   /* user-select: none; */
 
-  /* color: #eee; */
+  color: #eee;
 }
 /* :root::target-text {
   color: red;

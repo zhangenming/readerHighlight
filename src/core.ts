@@ -3,6 +3,12 @@ import { MyRange, getPositions, getScrollPosition } from "./utils"
 
 export type AllWord = { [key: string]: { show: boolean; v: MyRange[] } }
 
+function getAll(allWordValue: AllWord) {
+  return Object.values(allWordValue)
+    .filter((e) => e.show)
+    .flatMap((e) => e.v)
+}
+
 export function getRangeFromPointIdx(
   query: string,
   range: MyRange,
@@ -13,12 +19,6 @@ export function getRangeFromPointIdx(
       .filter((e) => e.query === query)
       .findIndex((e) => e === range) + 1
   )
-}
-
-function getAll(allWordValue: AllWord) {
-  return Object.values(allWordValue)
-    .filter((e) => e.show)
-    .flatMap((e) => e.v)
 }
 
 export function getRangeFromPoint({ x, y }: MouseEvent, allWordValue: AllWord) {
