@@ -27,6 +27,7 @@ import {
   geneNewQueryRange,
 } from "./core"
 import { jumpRange } from "./reader"
+import Time from "./components/Time.vue"
 
 const { document } = window
 
@@ -158,7 +159,7 @@ document.onmousemove = (() => {
   // let _word: string | undefined
 
   return (evt) => {
-    if (Math.abs(evt.movementX) < 2) return // 可能是鼠标不小心偏移
+    if (Math.abs(evt.movementX) < 1) return // 可能是鼠标不小心偏移
 
     是否自动滚动 = false
 
@@ -266,6 +267,7 @@ const hoverWordStyle = `{ color: #fff;background: red;}`
     <article id="dom">
       {{ text }}
     </article>
+    <Time />
   </div>
 
   <!-- <div
@@ -327,7 +329,7 @@ article {
   scroll-behavior: smooth;
   /* user-select: none; */
 
-  color: #eee;
+  color: #f6f6f6;
 }
 /* :root::target-text {
   color: red;
