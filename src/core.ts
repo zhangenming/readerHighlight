@@ -1,6 +1,5 @@
 import { MyRange, getPositions, getScrollPosition } from "./utils"
-import storeFile from "./store/store"
-const store = storeFile()
+import store from "./store/store"
 
 function getAll() {
   return Object.values(store.allWord)

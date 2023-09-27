@@ -17,5 +17,5 @@ export default defineStore("store", () => {
   })
 
   return { text, textDom, allWord }
-})
+})()
 // s u c r

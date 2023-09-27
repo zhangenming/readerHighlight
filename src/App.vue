@@ -27,8 +27,7 @@ import {
 import { jumpRange } from "./reader"
 import Time from "./components/Time.vue"
 
-import storeFile from "./store/store"
-const store = storeFile()
+import store from "./store/store"
 
 const { document } = window
 

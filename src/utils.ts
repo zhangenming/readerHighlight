@@ -1,5 +1,4 @@
-import storeFile from "./store/store"
-const store = storeFile()
+import store from "./store/store"
 
 export function getPositions(query?: string) {
   if (!query || query === "") return []
