@@ -41,8 +41,6 @@ import(`../txt/${txt}.txt?raw`).then((res) => {
 
   store.text = data
 
-  getPositions("(").map((idx) => [idx, data.indexOf(")", idx)])
-
   nextTick(() => {
     // getScrollPosition().xx
     // scrollYLocal.value.xx
@@ -293,6 +291,9 @@ const hoverWordStyle = `{ color: #fff;background: #ccc;}`
 
   <component is="style">
     article::highlight({{ hoverQuery }}){{ hoverWordStyle }}
+  </component>
+  <component is="style">
+    article::highlight(spking){ color: #fff;background: #ccc;}
   </component>
   <!-- article::highlight({{ word }}):hover {{ hoverWordStyle }} -->
   <!-- 可惜不支持:hover和事件机制 需要使用JS模拟 -->

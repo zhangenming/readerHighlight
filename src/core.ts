@@ -50,21 +50,27 @@ export function setHighlights(query?: string, ranges?: MyRange[]) {
   if (query && ranges) {
     colorQuery(query, ranges) // 现在用不到了 全部全量更新
   } else {
-    Object.entries(store.allWord).forEach(([q, { show, v }]) =>
-      colorQuery(q, show ? v : [])
+    Object.entries(store.allWord).forEach(([query, { show, v }]) =>
+      colorQuery(query, show ? v : [])
     )
   }
 
-  function colorQuery(query: string, value: MyRange[]) {
+  function colorQuery(query: string, ranges: MyRange[]) {
     const scroll = getScrollPosition()
-    const screenRanges = value.filter(
+    const screenRanges = ranges.filter(
       ({ y }) => y > scroll && y < scroll + 1800
     )
-
-    const R = screenRanges.map(createRange)
-    const H = new (window as any).Highlight(...R)
-    ;(CSS as any).highlights.set(query, H)
+    setHighlights2(query, screenRanges)
   }
+}
+
+export function setHighlights2(
+  query: string,
+  ranges: { start: number; end: number }[]
+) {
+  const R = ranges.map(createRange)
+  const H = new (window as any).Highlight(...R)
+  ;(CSS as any).highlights.set(query, H)
 }
 
 export function geneNewQueryRange(query: string) {
@@ -85,7 +91,7 @@ export function geneNewQueryRange(query: string) {
     })
 }
 
-function createRange({ start, end }: { start: number; end: number }) {
+export function createRange({ start, end }: { start: number; end: number }) {
   const { textDom } = store
 
   const range = new Range()
