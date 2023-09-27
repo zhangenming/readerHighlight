@@ -19,7 +19,7 @@ import {
   setScrollPosition,
 } from "./utils"
 import {
-  getRangeFromPoint,
+  getPositionFromPoint,
   getRangeFromPointIdx,
   setHighlights,
   geneNewQueryRange,
@@ -138,11 +138,11 @@ document.onclick = (e) => {
     // range跳转
     clientYLocal = e.clientY
 
-    const target = getRangeFromPoint(e)
-    if (!target) return
+    const ps = getPositionFromPoint(e)
+    if (!ps) return
 
     跳转之前的位置 = getScrollPosition()
-    jumpRange(target, e, jumpTargetRange, clientYLocal)
+    jumpRange(ps, e, jumpTargetRange, clientYLocal)
   }
 }
 
@@ -157,10 +157,10 @@ document.onmousemove = (() => {
 
     是否自动滚动 = false
 
-    const target = getRangeFromPoint(evt) // hack for elementFromPoint
-    if (!target) return
+    const ps = getPositionFromPoint(evt) // hack for elementFromPoint
+    if (!ps) return
 
-    const { query } = target
+    const { query } = ps
     hoverQuery.value = query
 
     // 设置hover idx

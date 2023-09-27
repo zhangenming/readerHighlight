@@ -16,30 +16,30 @@ export function getRangeFromPointIdx(query: string, range: MyRange) {
   )
 }
 
-export function getRangeFromPoint({ x, y }: MouseEvent) {
+export function getPositionFromPoint({ x, y }: MouseEvent) {
   const curentRange = document.caretRangeFromPoint(x, y)
   if (!curentRange) return
 
   const idx = curentRange.startOffset
-  const target = getAll().find((e) => e.start <= idx && e.end >= idx)
+  const ps = getAll().find((e) => e.start <= idx && e.end >= idx)
 
-  if (!target) return
+  if (!ps) return
 
-  return withFourJumpInfo(target)
+  return withFourJumpInfo(ps)
 }
 
-export function withFourJumpInfo(range: MyRange) {
-  const ranges = store.allWord[range.query].v
+export function withFourJumpInfo(ps: MyRange) {
+  const ranges = store.allWord[ps.query].v
 
-  const idx = ranges.findIndex((e) => e === range)
+  const idx = ranges.findIndex((e) => e === ps)
 
   const firstR = ranges[0]
   const lastR = ranges.at(-1)
-  const preR = ranges.slice(0, idx).findLast((e) => e.y != range.y) || lastR
-  const nextR = ranges.slice(idx + 1).find((e) => e.y != range.y) || firstR
+  const preR = ranges.slice(0, idx).findLast((e) => e.y != ps.y) || lastR
+  const nextR = ranges.slice(idx + 1).find((e) => e.y != ps.y) || firstR
 
   return {
-    ...range,
+    ...ps,
     firstR,
     lastR,
     preR,
@@ -62,7 +62,7 @@ export function setHighlights(query?: string, ranges?: MyRange[]) {
       ({ y }) => y > scroll && y < scroll + 1800
     )
 
-    const R = screenRanges.map((e) => createRange(e.start, e.end))
+    const R = screenRanges.map(createRange)
     const H = new (window as any).Highlight(...R)
     ;(CSS as any).highlights.set(query, H)
   }
@@ -70,7 +70,7 @@ export function setHighlights(query?: string, ranges?: MyRange[]) {
 
 export function geneNewQueryRange(query: string) {
   return getPositions(query)
-    .map((start) => createRange(start, start + query.length)) // 这个是不是不需要 使用的时候再create
+    .map((start) => createRange({ start, end: start + query.length })) // 这个是不是不需要 使用的时候再create
     .map((range) => {
       const { x, y } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom, 这个信息是为了click的时候XY2Range用, 现在暂时用不到
 
@@ -86,7 +86,7 @@ export function geneNewQueryRange(query: string) {
     })
 }
 
-function createRange(start: number, end: number) {
+function createRange({ start, end }: { start: number; end: number }) {
   const { textDom } = store
 
   const range = new Range()
