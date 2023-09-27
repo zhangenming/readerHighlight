@@ -1,7 +1,6 @@
 <!-- 应用逻辑 vue逻辑分离 -->
 <!-- 刷新的时候 页面会滚动一小短距离 -->
 <script setup lang="ts">
-import { useLocalStorage } from "@vueuse/core"
 import {
   ref,
   computed,
@@ -12,48 +11,48 @@ import {
   Ref,
   onUpdated,
 } from "vue"
+import { useLocalStorage } from "@vueuse/core"
 import {
   MyRange,
   getPositions,
   getScrollPosition,
   setScrollPosition,
-  setTxt,
 } from "./utils"
 import {
-  AllWord,
   getRangeFromPoint,
   getRangeFromPointIdx,
-  setQueryHighlights,
+  setHighlights,
   geneNewQueryRange,
 } from "./core"
 import { jumpRange } from "./reader"
 import Time from "./components/Time.vue"
 
-const { document } = window
+import storeFile from "./store/store"
+const store = storeFile()
 
-const txt = "天道"
-const text = ref("init")
+const { document } = window
 
 // window.onload = function () {
 //   history.scrollRestoration = "manual"
 // }
 
+const txt = "天道"
 import(`../txt/${txt}.txt?raw`).then((res) => {
   const data = res.default.replaceAll("\n\n\n", "\n\n")
 
-  setTxt((text.value = data)) // 更新 text
+  store.text = data
+
+  getPositions("(").map((idx) => [idx, data.indexOf(")", idx)])
 
   nextTick(() => {
     // getScrollPosition().xx
     // scrollYLocal.value.xx
 
-    ;(window as any).textDom = document.getElementById("dom")!.childNodes[0]
+    store.textDom = document.getElementById("dom")!.childNodes[0]
 
     setScrollPosition(scrollYLocal.value)
 
-    // Object.keys(allWord.value).forEach((query) =>
-    //   setQueryHighlights(allWord, query)
-    // ) // workaround
+    setHighlights() // init set
 
     // getScrollPosition().xx
     // scrollYLocal.value.xx
@@ -61,11 +60,10 @@ import(`../txt/${txt}.txt?raw`).then((res) => {
 })
 
 // vue reactivity... / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
-const allWord = useLocalStorage("allWord", {} as AllWord)
 
 const jumpTargetRange = ref<MyRange>()
 
-// mousescroll event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
+// mouseSCROLL event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
 let 是否自动滚动 = false
 const 滚动速度 = useLocalStorage("speedScroll", 0.05)
 requestAnimationFrame(function runScroll() {
@@ -95,15 +93,12 @@ document.onscroll = () => {
 
   scrollYLocal.value = getScrollPosition()
 
-  滚动速度.value < 1 &&
-    Object.keys(allWord.value).forEach((query) =>
-      setQueryHighlights(allWord, query)
-    )
+  滚动速度.value < 1 && setHighlights()
 
   info.value = {} as any
 }
 
-// mouseclick event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
+// mouseCLICK event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
 let clientYLocal = 0
 let 跳转之前的位置: number
 document.onclick = (e) => {
@@ -114,18 +109,18 @@ document.onclick = (e) => {
     // range添加删除
     if (query === "" || query.includes("\n")) return
 
-    if (allWord.value[query]) {
+    if (store.allWord[query]) {
       del(query)
     } else {
-      allWord.value[query] = {
-        show: true,
-        v: geneNewQueryRange(query),
-      }
+      const v = geneNewQueryRange(query)
 
-      setQueryHighlights(allWord, query)
+      store.allWord[query] = {
+        show: true,
+        v,
+      }
     }
 
-    if (allWord.value[query].show) {
+    if (store.allWord[query].show) {
       const len = getPositions(query).length
       document.title = len + ""
 
@@ -137,22 +132,21 @@ document.onclick = (e) => {
     }
 
     function del(query: string) {
-      allWord.value[query].show = !allWord.value[query].show
-      setQueryHighlights(allWord, query)
+      store.allWord[query].show = !store.allWord[query].show
     }
   } else {
     // range跳转
     clientYLocal = e.clientY
 
-    const target = getRangeFromPoint(e, allWord.value)
+    const target = getRangeFromPoint(e)
     if (!target) return
 
     跳转之前的位置 = getScrollPosition()
-    jumpRange(target, e, jumpTargetRange, clientYLocal, allWord.value)
+    jumpRange(target, e, jumpTargetRange, clientYLocal)
   }
 }
 
-// mousemove event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
+// mouseMOVE event / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
 const info = ref({ current: 0, all: 0, x: 0, y: 0 })
 const hoverQuery = ref()
 document.onmousemove = (() => {
@@ -163,7 +157,7 @@ document.onmousemove = (() => {
 
     是否自动滚动 = false
 
-    const target = getRangeFromPoint(evt, allWord.value) // hack for elementFromPoint
+    const target = getRangeFromPoint(evt) // hack for elementFromPoint
     if (!target) return
 
     const { query } = target
@@ -199,13 +193,7 @@ document.onkeydown = (e) => {
 
   if (key === "Alt") {
     e.preventDefault()
-    jumpRange(
-      jumpTargetRange.value!,
-      e,
-      jumpTargetRange,
-      clientYLocal,
-      allWord.value
-    )
+    jumpRange(jumpTargetRange.value!, e, jumpTargetRange, clientYLocal)
   }
 
   if (key === "Backspace") {
@@ -245,8 +233,8 @@ document.onkeydown = (e) => {
   }
 }
 
-const wordStyle = `{ color: red;background: #fff; }`
-const hoverWordStyle = `{ color: #fff;background: red;}`
+const wordStyle = `{ color: #ccc;background: #fff; }`
+const hoverWordStyle = `{ color: #fff;background: #ccc;}`
 </script>
 
 <template>
@@ -265,7 +253,7 @@ const hoverWordStyle = `{ color: #fff;background: red;}`
 
   <div>
     <article id="dom">
-      {{ text }}
+      {{ store.text }}
     </article>
     <Time />
   </div>
@@ -287,7 +275,7 @@ const hoverWordStyle = `{ color: #fff;background: red;}`
     {{ info.current }} / {{ info.all }}
   </div> -->
 
-  <component is="style" v-for="word of Object.keys(allWord)">
+  <component is="style" v-for="word of Object.keys(store.allWord)">
     <!-- {{
       word === hoverQuery
         ? `article::highlight(${word})${hoverWordStyle}`

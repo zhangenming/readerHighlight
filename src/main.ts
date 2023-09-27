@@ -1,6 +1,7 @@
-import './debug.js'
-import { createApp } from 'vue'
-import './style.css'
-import App from './App.vue'
+import "./debug.js"
+import "./style.css"
+import { createApp } from "vue"
+import { createPinia } from "pinia"
+import AppWrap from "./AppWrap.vue"
 
-createApp(App).mount('#app')
+createApp(AppWrap).use(createPinia()).mount("#app")

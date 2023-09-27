@@ -1,42 +1,35 @@
-import { RemovableRef } from "@vueuse/core"
 import { MyRange, getPositions, getScrollPosition } from "./utils"
+import storeFile from "./store/store"
+const store = storeFile()
 
-export type AllWord = { [key: string]: { show: boolean; v: MyRange[] } }
-
-function getAll(allWordValue: AllWord) {
-  return Object.values(allWordValue)
+function getAll() {
+  return Object.values(store.allWord)
     .filter((e) => e.show)
     .flatMap((e) => e.v)
 }
 
-export function getRangeFromPointIdx(
-  query: string,
-  range: MyRange,
-  allWordValue: AllWord
-) {
+export function getRangeFromPointIdx(query: string, range: MyRange) {
   return (
-    getAll(allWordValue)
+    getAll()
       .filter((e) => e.query === query)
       .findIndex((e) => e === range) + 1
   )
 }
 
-export function getRangeFromPoint({ x, y }: MouseEvent, allWordValue: AllWord) {
+export function getRangeFromPoint({ x, y }: MouseEvent) {
   const curentRange = document.caretRangeFromPoint(x, y)
   if (!curentRange) return
 
   const idx = curentRange.startOffset
-  const target = getAll(allWordValue).find(
-    (e) => e.start <= idx && e.end >= idx
-  )
+  const target = getAll().find((e) => e.start <= idx && e.end >= idx)
 
   if (!target) return
 
-  return withFourJumpInfo(target, allWordValue)
+  return withFourJumpInfo(target)
 }
 
-export function withFourJumpInfo(range: MyRange, allWordValue: AllWord) {
-  const ranges = allWordValue[range.query].v
+export function withFourJumpInfo(range: MyRange) {
+  const ranges = store.allWord[range.query].v
 
   const idx = ranges.findIndex((e) => e === range)
 
@@ -54,24 +47,25 @@ export function withFourJumpInfo(range: MyRange, allWordValue: AllWord) {
   } as MyRange
 }
 
-function highlightsSet(query: string, ranges: MyRange[] = []) {
-  const R = ranges.map((e) => createRange(e.start, e.end))
-  const H = new (window as any).Highlight(...R)
-  ;(CSS as any).highlights.set(query, H)
-}
+export function setHighlights(query?: string, ranges?: MyRange[]) {
+  if (query && ranges) {
+    colorQuery(query, ranges) // 现在用不到了 全部全量更新
+  } else {
+    Object.entries(store.allWord).forEach(([q, { show, v }]) =>
+      colorQuery(q, show ? v : [])
+    )
+  }
 
-export function setQueryHighlights(
-  allWord: RemovableRef<{ [key: string]: { show: boolean; v: MyRange[] } }>,
-  query: string
-) {
-  const { show, v } = allWord.value[query]
+  function colorQuery(query: string, value: MyRange[]) {
+    const scroll = getScrollPosition()
+    const screenRanges = value.filter(
+      ({ y }) => y > scroll && y < scroll + 1800
+    )
 
-  const scroll = getScrollPosition()
-  const screenRanges = show
-    ? v.filter(({ y }) => y > scroll && y < scroll + 1800)
-    : []
-
-  highlightsSet(query, screenRanges)
+    const R = screenRanges.map((e) => createRange(e.start, e.end))
+    const H = new (window as any).Highlight(...R)
+    ;(CSS as any).highlights.set(query, H)
+  }
 }
 
 export function geneNewQueryRange(query: string) {
@@ -81,7 +75,7 @@ export function geneNewQueryRange(query: string) {
       const { x, y } = range.getBoundingClientRect() // todo 只计算当前屏幕需要的dom, 这个信息是为了click的时候XY2Range用, 现在暂时用不到
 
       return Object.assign(range, {
-        start: range.startOffset, // 序列号的时候会丢失
+        start: range.startOffset, // 原对象序列号的时候会丢失, 所以这里手动
         end: range.endOffset,
 
         query,
@@ -93,10 +87,10 @@ export function geneNewQueryRange(query: string) {
 }
 
 function createRange(start: number, end: number) {
-  const { textDom } = window as any
+  const { textDom } = store
 
   const range = new Range()
-  range.setStart(textDom, start)
-  range.setEnd(textDom, end)
+  range.setStart(textDom!, start)
+  range.setEnd(textDom!, end)
   return range
 }
