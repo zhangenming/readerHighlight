@@ -35,7 +35,7 @@ const { document } = window
 //   history.scrollRestoration = "manual"
 // }
 
-const txt = "天道"
+const txt = "最后的棒棒"
 import(`../txt/${txt}.txt?raw`).then((res) => {
   const data = res.default.replaceAll("\n\n\n", "\n\n")
 
@@ -317,7 +317,7 @@ article {
   scroll-behavior: smooth;
   /* user-select: none; */
 
-  color: #f6f6f6;
+  /* color: #f6f6f6; */
 }
 /* :root::target-text {
   color: red;

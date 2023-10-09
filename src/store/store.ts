@@ -24,9 +24,9 @@ export default defineStore("store", () => {
     watch(textDom, () => {
       const t = text.value
 
-      const spking = getPositions("(").map((start) => ({
+      const spking = getPositions("“").map((start) => ({
         start: 1 + start,
-        end: t.indexOf(")", start),
+        end: t.indexOf("”", start),
       }))
 
       setHighlights2("spking", spking)
