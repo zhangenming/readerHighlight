@@ -35,7 +35,7 @@ const { document } = window
 //   history.scrollRestoration = "manual"
 // }
 
-const txt = "最后的棒棒"
+const txt = "最后的棒棒" //"太白金星有点烦 (马伯庸) (Z-Library)" //"最后的棒棒"
 import(`../txt/${txt}.txt?raw`).then((res) => {
   const data = res.default.replaceAll("\n\n\n", "\n\n")
 
@@ -293,7 +293,7 @@ const hoverWordStyle = `{ color: #fff;background: #ccc;}`
     article::highlight({{ hoverQuery }}){{ hoverWordStyle }}
   </component>
   <component is="style">
-    article::highlight(spking){ color: #fff;background: #ccc;}
+    article::highlight(spking){ color: #fff;background: #2a5caa;}
   </component>
   <!-- article::highlight({{ word }}):hover {{ hoverWordStyle }} -->
   <!-- 可惜不支持:hover和事件机制 需要使用JS模拟 -->
